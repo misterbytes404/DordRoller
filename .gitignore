@@ -62,6 +62,11 @@ jspm_packages/
 .cache
 .parcel-cache
 
+# pnpm
+.pnpm/
+.pnpm-debug.log*
+pnpm-lock.yaml
+
 # Next.js build output
 .next
 
