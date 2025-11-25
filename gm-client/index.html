@@ -92,113 +92,95 @@
       </section>
 
       <section id="monster-tracker">
-      <h2>Monster Tracker</h2>
-      <div id="add-monster-form">
-        <div class="field-group">
-          <label for="monster-name">Name:</label><br>
-          <input type="text" id="monster-name" placeholder="Monster Name" required>
+        <h2>Monster Tracker</h2>
+        <div id="bestiary-search">
+          <label for="monster-search">Monster Search:</label><br>
+          <input type="text" id="monster-search" placeholder="Search bestiary by name...">
+          <ul id="search-results" style="display: none;"></ul>
         </div>
-        <div class="field-group">
-          <label for="monster-size">Size:</label><br>
-          <select id="monster-size">
-            <option value="Tiny">Tiny</option>
-            <option value="Small">Small</option>
-            <option value="Medium">Medium</option>
-            <option value="Large">Large</option>
-            <option value="Huge">Huge</option>
-            <option value="Gargantuan">Gargantuan</option>
-          </select>
+        <div id="add-monster-form">
+          <div class="field-group">
+            <label for="monster-name">Name:</label><br>
+            <input type="text" id="monster-name" placeholder="Monster Name">
+          </div>
+          <div class="field-group">
+            <label for="monster-source">Source:</label><br>
+            <input type="text" id="monster-source" placeholder="e.g., Monster Manual">
+          </div>
+          <div class="field-group">
+            <label for="monster-type">Type:</label><br>
+            <input type="text" id="monster-type" placeholder="e.g., Elemental">
+          </div>
+          <div class="field-group">
+            <label for="monster-ac">AC:</label><br>
+            <input type="number" id="monster-ac" placeholder="AC">
+          </div>
+          <div class="field-group">
+            <label for="monster-hp">HP:</label><br>
+            <input type="number" id="monster-hp" placeholder="HP">
+          </div>
+          <div class="field-group">
+            <label for="monster-hit-dice">Hit Dice:</label><br>
+            <input type="text" id="monster-hit-dice" placeholder="e.g., 13d10 + 26">
+          </div>
+          <div class="field-group">
+            <label for="monster-speed">Speed:</label><br>
+            <input type="text" id="monster-speed" placeholder="e.g., 50 ft., Fly 50 ft. (hover)">
+          </div>
+          <div class="field-group">
+            <label for="monster-str">STR:</label><br>
+            <input type="number" id="monster-str" placeholder="STR score" min="1" max="30" value="10">
+          </div>
+          <div class="field-group">
+            <label for="monster-dex">DEX:</label><br>
+            <input type="number" id="monster-dex" placeholder="DEX score" min="1" max="30" value="10">
+          </div>
+          <div class="field-group">
+            <label for="monster-con">CON:</label><br>
+            <input type="number" id="monster-con" placeholder="CON score" min="1" max="30" value="10">
+          </div>
+          <div class="field-group">
+            <label for="monster-int">INT:</label><br>
+            <input type="number" id="monster-int" placeholder="INT score" min="1" max="30" value="10">
+          </div>
+          <div class="field-group">
+            <label for="monster-wis">WIS:</label><br>
+            <input type="number" id="monster-wis" placeholder="WIS score" min="1" max="30" value="10">
+          </div>
+          <div class="field-group">
+            <label for="monster-cha">CHA:</label><br>
+            <input type="number" id="monster-cha" placeholder="CHA score" min="1" max="30" value="10">
+          </div>
+          <div class="field-group">
+            <label for="monster-skills">Skills:</label><br>
+            <input type="text" id="monster-skills" placeholder="e.g., Perception +8, Stealth +10">
+          </div>
+          <div class="field-group">
+            <label for="monster-senses">Senses:</label><br>
+            <input type="text" id="monster-senses" placeholder="e.g., Darkvision 60 ft.; Passive Perception 18">
+          </div>
+          <div class="field-group">
+            <label for="monster-languages">Languages:</label><br>
+            <input type="text" id="monster-languages" placeholder="e.g., Common, Primordial (Auran)">
+          </div>
+          <div class="field-group">
+            <label for="monster-cr">CR:</label><br>
+            <input type="text" id="monster-cr" placeholder="e.g., 6 (XP 2,300; PB +3)">
+          </div>
+          <div class="field-group">
+            <label for="monster-actions">Actions:</label><br>
+            <textarea id="monster-actions" placeholder="e.g., Multiattack. The stalker makes..."></textarea>
+          </div>
+          <div class="field-group">
+            <label for="monster-reactions">Reactions:</label><br>
+            <textarea id="monster-reactions" placeholder="e.g., Opportunity Attack. The stalker makes..."></textarea>
+          </div>
+          <button id="add-monster-btn">Add Monster</button>
         </div>
-        <div class="field-group">
-          <label for="monster-type">Type:</label><br>
-          <input type="text" id="monster-type" placeholder="e.g., Elemental" required>
+        <div id="monster-list">
+          <!-- Monster cards will be added here dynamically -->
         </div>
-        <div class="field-group">
-          <label for="monster-alignment">Alignment:</label><br>
-          <select id="monster-alignment">
-            <option value="Lawful Good">Lawful Good</option>
-            <option value="Neutral">Neutral</option>
-            <!-- Add more as needed -->
-          </select>
-        </div>
-        <div class="field-group">
-          <label for="monster-ac">AC:</label><br>
-          <input type="number" id="monster-ac" placeholder="AC" required>
-        </div>
-        <div class="field-group">
-          <label for="monster-hp">HP:</label><br>
-          <input type="number" id="monster-hp" placeholder="HP" required>
-        </div>
-        <div class="field-group">
-          <label for="monster-hp-dice">HP Dice:</label><br>
-          <input type="text" id="monster-hp-dice" placeholder="e.g., 13d10 + 26">
-        </div>
-        <div class="field-group">
-          <label for="monster-speed">Speed:</label><br>
-          <input type="text" id="monster-speed" placeholder="e.g., 50 ft., Fly 50 ft. (hover)" required>
-        </div>
-        <div class="field-group">
-          <label for="monster-str">STR:</label><br>
-          <input type="number" id="monster-str" placeholder="STR score" min="1" max="30" value="10">
-        </div>
-        <div class="field-group">
-          <label for="monster-dex">DEX:</label><br>
-          <input type="number" id="monster-dex" placeholder="DEX score" min="1" max="30" value="10">
-        </div>
-        <div class="field-group">
-          <label for="monster-con">CON:</label><br>
-          <input type="number" id="monster-con" placeholder="CON score" min="1" max="30" value="10">
-        </div>
-        <div class="field-group">
-          <label for="monster-int">INT:</label><br>
-          <input type="number" id="monster-int" placeholder="INT score" min="1" max="30" value="10">
-        </div>
-        <div class="field-group">
-          <label for="monster-wis">WIS:</label><br>
-          <input type="number" id="monster-wis" placeholder="WIS score" min="1" max="30" value="10">
-        </div>
-        <div class="field-group">
-          <label for="monster-cha">CHA:</label><br>
-          <input type="number" id="monster-cha" placeholder="CHA score" min="1" max="30" value="10">
-        </div>
-        <div class="field-group">
-          <label for="monster-skills">Skills:</label><br>
-          <input type="text" id="monster-skills" placeholder="e.g., Perception +8, Stealth +10">
-        </div>
-        <div class="field-group">
-          <label for="monster-resistances">Resistances:</label><br>
-          <input type="text" id="monster-resistances" placeholder="e.g., Bludgeoning, Piercing, Slashing">
-        </div>
-        <div class="field-group">
-          <label for="monster-immunities">Immunities:</label><br>
-          <input type="text" id="monster-immunities" placeholder="e.g., Poison; Exhaustion, Grappled">
-        </div>
-        <div class="field-group">
-          <label for="monster-senses">Senses:</label><br>
-          <input type="text" id="monster-senses" placeholder="e.g., Darkvision 60 ft.; Passive Perception 18">
-        </div>
-        <div class="field-group">
-          <label for="monster-languages">Languages:</label><br>
-          <input type="text" id="monster-languages" placeholder="e.g., Common, Primordial (Auran)">
-        </div>
-        <div class="field-group">
-          <label for="monster-cr">CR:</label><br>
-          <input type="text" id="monster-cr" placeholder="e.g., 6 (XP 2,300; PB +3)">
-        </div>
-        <div class="field-group">
-          <label for="monster-traits">Traits:</label><br>
-          <textarea id="monster-traits" placeholder="e.g., Air Form. The stalker can enter..."></textarea>
-        </div>
-        <div class="field-group">
-          <label for="monster-actions">Actions:</label><br>
-          <textarea id="monster-actions" placeholder="e.g., Multiattack. The stalker makes..."></textarea>
-        </div>
-        <button id="add-monster-btn">Add Monster</button>
-      </div>
-      <div id="monster-list">
-        <!-- Monster cards will be added here dynamically -->
-      </div>
-      <section>
+      </section>
 
       <section id="player-tracker">
         <h2>Player Tracker (MVP 2)</h2>

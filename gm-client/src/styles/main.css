@@ -151,3 +151,60 @@ button:hover {
 #add-monster-form textarea {
   height: 60px;
 }
+
+.abilities-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 10px 0;
+}
+
+.abilities-table th, .abilities-table td {
+  border: 1px solid #ccc;
+  padding: 5px;
+  text-align: center;
+}
+
+/* Bestiary search styles */
+#bestiary-search {
+  position: relative;
+  margin-bottom: 15px;
+}
+
+#monster-search {
+  width: 100%;
+  padding: 8px;
+  background: #333;
+  color: #e0e0e0;
+  border: 1px solid #555;
+  border-radius: 4px;
+}
+
+#search-results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #333;
+  border: 1px solid #555;
+  border-top: none;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+#search-results li {
+  padding: 8px;
+  cursor: pointer;
+  border-bottom: 1px solid #555;
+}
+
+#search-results li:hover {
+  background: #444;
+}
+
+#search-results li:last-child {
+  border-bottom: none;
+}

@@ -19,6 +19,10 @@ DordRoller/
 - **Frontend**: Modern JavaScript (ES6+)
 - **Real-time**: WebSocket via Socket.io
 
+## Attributions
+
+This project incorporates parsing logic inspired by the 5etools project (https://github.com/5etools-mirror-3/5etools-src), which is licensed under the MIT License. The original project provides comprehensive D&D tools and data.
+
 ## Development Roadmap
 
 1. **MVP 1**: GM-to-OBS Dice Roller
