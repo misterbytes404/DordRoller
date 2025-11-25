@@ -29,6 +29,10 @@ This project incorporates parsing logic inspired by the 5etools project (https:/
 2. **MVP 2**: GM Stat Tracker
 3. **MVP 3**: Player Client Integration
 
+## To Do
+
+1. **HP Bar* Make an HP bar at the top of the monster card that allows the GM to manipulate the value to show damage.Implament this for the player client as well.
+
 ## Known Bugs
 
 1. **Monster Type:** Some entries pulled from the json database do not properly parse monster types.
