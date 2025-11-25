@@ -76,8 +76,6 @@ dist
 
 # Gatsby files
 .cache/
-public
-!public/data/bestiary/
 
 # Storybook build outputs
 .out
