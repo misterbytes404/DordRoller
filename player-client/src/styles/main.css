@@ -17,7 +17,8 @@ body {
 
 #app {
   width: 100%;
-  max-width: 500px;
+  max-width: 1200px;
+  padding: 20px;
 }
 
 header {
@@ -109,4 +110,394 @@ button:hover {
 
 #result-display:not(:empty) {
   display: block;
+}
+
+/* Character Sheet Styles */
+.sheet-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.left-column, .right-column {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.card {
+  background: #333;
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #444;
+}
+
+.card h3 {
+  color: #4ecdc4;
+  margin-bottom: 15px;
+  text-align: center;
+  border-bottom: 1px solid #444;
+  padding-bottom: 10px;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+  color: #4ecdc4;
+}
+
+.form-row {
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+.form-row .form-group {
+  flex: 1;
+  min-width: 150px;
+}
+
+.abilities-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  margin-top: 10px;
+}
+
+.ability {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.ability input {
+  width: 60px;
+  text-align: center;
+}
+
+.modifier {
+  width: 50px;
+  text-align: center;
+  font-weight: bold;
+  color: #ff6b6b;
+  margin-top: 5px;
+}
+
+.saves-grid, .skills-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.save, .skill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.save input, .skill input {
+  margin: 0;
+}
+
+.total {
+  font-weight: bold;
+  color: #4ecdc4;
+}
+
+.saves-table, .skills-table, .abilities-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+.saves-table th, .saves-table td, .skills-table th, .skills-table td, .abilities-table th, .abilities-table td {
+  padding: 8px;
+  text-align: left;
+  border: 1px solid #444;
+}
+
+.saves-table th, .skills-table th, .abilities-table th {
+  background: #333;
+  font-weight: bold;
+  color: #4ecdc4;
+}
+
+.saves-table td, .skills-table td, .abilities-table td {
+  background: #2a2a2a;
+}
+
+.saves-table input[type="checkbox"], .skills-table input[type="checkbox"] {
+  margin: 0;
+}
+
+.equipment-section {
+  width: 100%;
+  margin-top: 20px;
+}
+
+.equipment-section textarea {
+  width: 100%;
+  background: #333;
+  color: #e0e0e0;
+  border: 1px solid #444;
+  padding: 10px;
+  border-radius: 4px;
+  font-family: inherit;
+  resize: vertical;
+}
+
+.tabs {
+  display: flex;
+  margin-bottom: 10px;
+}
+
+.tab-button {
+  background: #333;
+  color: #e0e0e0;
+  border: 1px solid #444;
+  padding: 10px 20px;
+  cursor: pointer;
+  flex: 1;
+  transition: background 0.3s;
+}
+
+.tab-button.active {
+  background: #4ecdc4;
+  color: #1a1a1a;
+}
+
+.tab-button:hover {
+  background: #444;
+}
+
+.tab-content {
+  background: #2a2a2a;
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #444;
+}
+
+.tab-pane {
+  display: none;
+}
+
+.tab-pane.active {
+  display: block;
+}
+
+.combat-tabs {
+  display: flex;
+  margin-bottom: 10px;
+}
+
+.combat-tab-button {
+  background: #333;
+  color: #e0e0e0;
+  border: 1px solid #444;
+  padding: 8px 16px;
+  cursor: pointer;
+  flex: 1;
+  transition: background 0.3s;
+}
+
+.combat-tab-button.active {
+  background: #4ecdc4;
+  color: #1a1a1a;
+}
+
+.combat-tab-button:hover {
+  background: #444;
+}
+
+.combat-tab-content {
+  background: #2a2a2a;
+  padding: 15px;
+  border-radius: 8px;
+  border: 1px solid #444;
+}
+
+.combat-tab-pane {
+  display: none;
+}
+
+.combat-tab-pane.active {
+  display: block;
+}
+
+.spell-slots-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+.spell-slots-table th, .spell-slots-table td {
+  padding: 8px;
+  text-align: center;
+  border: 1px solid #444;
+}
+
+.spell-slots-table th {
+  background: #333;
+  font-weight: bold;
+  color: #4ecdc4;
+}
+
+.spell-slots-table td {
+  background: #2a2a2a;
+}
+
+.spell-slots-table input {
+  width: 60px;
+  text-align: center;
+  background: #333;
+  color: #e0e0e0;
+  border: 1px solid #444;
+  padding: 4px;
+}
+
+.weapons-list {
+  margin-top: 10px;
+}
+
+.weapon-item {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+  align-items: center;
+}
+
+.weapon-item input {
+  flex: 1;
+  padding: 8px;
+  background: #333;
+  color: #e0e0e0;
+  border: 1px solid #444;
+  border-radius: 4px;
+}
+
+.calc {
+  font-weight: bold;
+  color: #ff6b6b;
+}
+
+#save-char-btn {
+  grid-column: span 2;
+  margin-top: 20px;
+}
+
+/* Spells Section */
+.spells-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.spellcasting-info {
+  background: #333;
+  padding: 15px;
+  border-radius: 8px;
+  border: 1px solid #444;
+}
+
+.spellcasting-info .form-row {
+  margin-bottom: 10px;
+}
+
+.spellcasting-info .form-row:last-child {
+  margin-bottom: 0;
+}
+
+.cantrips-section {
+  background: #333;
+  padding: 15px;
+  border-radius: 8px;
+  border: 1px solid #444;
+}
+
+.cantrips-section h4 {
+  margin: 0 0 15px 0;
+  color: #4ecdc4;
+}
+
+.cantrips-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.cantrips-list input {
+  padding: 8px;
+  background: #2a2a2a;
+  color: #e0e0e0;
+  border: 1px solid #444;
+  border-radius: 4px;
+}
+
+.prepared-spells-section {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.spell-level {
+  background: #333;
+  padding: 15px;
+  border-radius: 8px;
+  border: 1px solid #444;
+}
+
+.spell-level h5 {
+  margin: 0 0 10px 0;
+  color: #4ecdc4;
+  font-size: 1.1em;
+}
+
+.spell-slots-info {
+  margin-bottom: 10px;
+  font-size: 0.9em;
+  color: #ccc;
+}
+
+.prepared-spells-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+.prepared-spells-list input {
+  padding: 6px;
+  background: #2a2a2a;
+  color: #e0e0e0;
+  border: 1px solid #444;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .sheet-layout {
+    grid-template-columns: 1fr;
+  }
+  .form-row {
+    flex-direction: column;
+  }
+  .abilities-grid {
+    grid-template-columns: 1fr;
+  }
+  .saves-grid, .skills-grid {
+    grid-template-columns: 1fr;
+  }
+  .cantrips-list {
+    grid-template-columns: 1fr;
+  }
+  .prepared-spells-list {
+    grid-template-columns: 1fr;
+  }
 }

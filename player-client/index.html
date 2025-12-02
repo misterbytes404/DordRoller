@@ -29,6 +29,656 @@
         <button id="execute-roll-btn" style="display: none;">Roll!</button>
         <div id="result-display"></div>
       </section>
+
+      <section id="character-sheet" style="display: none;">
+        <h2>Character Sheet</h2>
+        <form id="char-form">
+        <div class="sheet-layout">
+          <div class="left-column">
+            <!-- Basic Info -->
+            <div class="card">
+              <h3>Basic Info</h3>
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="char-name">Character Name:</label>
+                  <input type="text" id="char-name" required>
+                </div>
+                <div class="form-group">
+                  <label for="char-class">Class:</label>
+                  <input type="text" id="char-class" required>
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="char-level">Level:</label>
+                  <input type="number" id="char-level" min="1" max="20" required>
+                </div>
+                <div class="form-group">
+                  <label>Proficiency Bonus:</label>
+                  <span id="prof-bonus" class="calc">+2</span>
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="char-race">Race:</label>
+                  <input type="text" id="char-race">
+                </div>
+                <div class="form-group">
+                  <label for="char-alignment">Alignment:</label>
+                  <select id="char-alignment">
+                    <option value="">Select</option>
+                    <option>Lawful Good</option>
+                    <option>Neutral Good</option>
+                    <option>Chaotic Good</option>
+                    <option>Lawful Neutral</option>
+                    <option>True Neutral</option>
+                    <option>Chaotic Neutral</option>
+                    <option>Lawful Evil</option>
+                    <option>Neutral Evil</option>
+                    <option>Chaotic Evil</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="char-xp">Experience Points:</label>
+                  <input type="number" id="char-xp" min="0">
+                </div>
+                <div class="form-group">
+                  <label for="char-player-name">Player Name:</label>
+                  <input type="text" id="char-player-name">
+                </div>
+              </div>
+            </div>
+
+            <!-- Combat Stats -->
+            <div class="card">
+              <h3>Combat Stats</h3>
+              <div class="combat-tabs">
+                <button type="button" class="combat-tab-button active" data-tab="combat">Combat</button>
+                <button type="button" class="combat-tab-button" data-tab="spell-rules">Spell Combat Rules</button>
+              </div>
+              <div class="combat-tab-content">
+                <div id="combat-tab" class="combat-tab-pane active">
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label for="char-ac">Armor Class:</label>
+                      <input type="number" id="char-ac" min="0">
+                    </div>
+                    <div class="form-group">
+                      <label for="char-initiative">Initiative:</label>
+                      <span id="char-initiative" class="calc">+0</span>
+                    </div>
+                  </div>
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label for="char-speed">Speed:</label>
+                      <input type="text" id="char-speed" placeholder="30 ft.">
+                    </div>
+                    <div class="form-group">
+                      <label for="char-hit-dice">Hit Dice:</label>
+                      <input type="text" id="char-hit-dice" placeholder="3d10">
+                    </div>
+                  </div>
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label for="char-hp">Current HP:</label>
+                      <input type="number" id="char-hp" min="0" required>
+                    </div>
+                    <div class="form-group">
+                      <label for="char-max-hp">Max HP:</label>
+                      <input type="number" id="char-max-hp" min="1" required>
+                    </div>
+                  </div>
+                  <h4>Armor</h4>
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label for="char-armor-name">Armor Name:</label>
+                      <input type="text" id="char-armor-name" placeholder="e.g., Chain Mail">
+                    </div>
+                    <div class="form-group">
+                      <label for="char-armor-ac">AC Bonus:</label>
+                      <input type="number" id="char-armor-ac" min="0" placeholder="10">
+                    </div>
+                  </div>
+                  <h4>Weapons</h4>
+                  <div class="weapons-list">
+                    <div class="weapon-item">
+                      <input type="text" id="weapon-1-name" placeholder="Weapon Name">
+                      <input type="text" id="weapon-1-damage" placeholder="Damage (e.g., 1d8)">
+                      <input type="text" id="weapon-1-properties" placeholder="Properties">
+                    </div>
+                    <div class="weapon-item">
+                      <input type="text" id="weapon-2-name" placeholder="Weapon Name">
+                      <input type="text" id="weapon-2-damage" placeholder="Damage (e.g., 1d8)">
+                      <input type="text" id="weapon-2-properties" placeholder="Properties">
+                    </div>
+                    <div class="weapon-item">
+                      <input type="text" id="weapon-3-name" placeholder="Weapon Name">
+                      <input type="text" id="weapon-3-damage" placeholder="Damage (e.g., 1d8)">
+                      <input type="text" id="weapon-3-properties" placeholder="Properties">
+                    </div>
+                  </div>
+                </div>
+                <div id="spell-rules-tab" class="combat-tab-pane">
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label for="spellcasting-ability">Spellcasting Ability:</label>
+                      <select id="spellcasting-ability">
+                        <option value="">Select</option>
+                        <option>Intelligence</option>
+                        <option>Wisdom</option>
+                        <option>Charisma</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label for="spell-save-dc">Spell Save DC:</label>
+                      <input type="number" id="spell-save-dc" min="0">
+                    </div>
+                    <div class="form-group">
+                      <label for="spell-attack-bonus">Spell Attack Bonus:</label>
+                      <input type="number" id="spell-attack-bonus" placeholder="+0">
+                    </div>
+                  </div>
+                  <h4>Spell Slots</h4>
+                  <table class="spell-slots-table">
+                    <thead>
+                      <tr>
+                        <th>Level</th>
+                        <th>Total Slots</th>
+                        <th>Expended</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>1st</td>
+                        <td><input type="number" id="spell-slot-1-total" min="0"></td>
+                        <td><input type="number" id="spell-slot-1-expended" min="0"></td>
+                      </tr>
+                      <tr>
+                        <td>2nd</td>
+                        <td><input type="number" id="spell-slot-2-total" min="0"></td>
+                        <td><input type="number" id="spell-slot-2-expended" min="0"></td>
+                      </tr>
+                      <tr>
+                        <td>3rd</td>
+                        <td><input type="number" id="spell-slot-3-total" min="0"></td>
+                        <td><input type="number" id="spell-slot-3-expended" min="0"></td>
+                      </tr>
+                      <tr>
+                        <td>4th</td>
+                        <td><input type="number" id="spell-slot-4-total" min="0"></td>
+                        <td><input type="number" id="spell-slot-4-expended" min="0"></td>
+                      </tr>
+                      <tr>
+                        <td>5th</td>
+                        <td><input type="number" id="spell-slot-5-total" min="0"></td>
+                        <td><input type="number" id="spell-slot-5-expended" min="0"></td>
+                      </tr>
+                      <tr>
+                        <td>6th</td>
+                        <td><input type="number" id="spell-slot-6-total" min="0"></td>
+                        <td><input type="number" id="spell-slot-6-expended" min="0"></td>
+                      </tr>
+                      <tr>
+                        <td>7th</td>
+                        <td><input type="number" id="spell-slot-7-total" min="0"></td>
+                        <td><input type="number" id="spell-slot-7-expended" min="0"></td>
+                      </tr>
+                      <tr>
+                        <td>8th</td>
+                        <td><input type="number" id="spell-slot-8-total" min="0"></td>
+                        <td><input type="number" id="spell-slot-8-expended" min="0"></td>
+                      </tr>
+                      <tr>
+                        <td>9th</td>
+                        <td><input type="number" id="spell-slot-9-total" min="0"></td>
+                        <td><input type="number" id="spell-slot-9-expended" min="0"></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="right-column">
+            <!-- Ability Scores -->
+            <div class="card">
+              <h3>Ability Scores</h3>
+              <table class="abilities-table">
+                <thead>
+                  <tr>
+                    <th>Ability</th>
+                    <th>Score</th>
+                    <th>Modifier</th>
+                    <th>Manual Mod</th>
+                    <th>Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Strength</td>
+                    <td><input type="number" id="str-score" min="1" max="20" required></td>
+                    <td id="str-mod-calc" class="calc">+0</td>
+                    <td><input type="number" id="str-manual-mod" placeholder="0"></td>
+                    <td id="str-total" class="total">+0</td>
+                  </tr>
+                  <tr>
+                    <td>Dexterity</td>
+                    <td><input type="number" id="dex-score" min="1" max="20" required></td>
+                    <td id="dex-mod-calc" class="calc">+0</td>
+                    <td><input type="number" id="dex-manual-mod" placeholder="0"></td>
+                    <td id="dex-total" class="total">+0</td>
+                  </tr>
+                  <tr>
+                    <td>Constitution</td>
+                    <td><input type="number" id="con-score" min="1" max="20" required></td>
+                    <td id="con-mod-calc" class="calc">+0</td>
+                    <td><input type="number" id="con-manual-mod" placeholder="0"></td>
+                    <td id="con-total" class="total">+0</td>
+                  </tr>
+                  <tr>
+                    <td>Intelligence</td>
+                    <td><input type="number" id="int-score" min="1" max="20" required></td>
+                    <td id="int-mod-calc" class="calc">+0</td>
+                    <td><input type="number" id="int-manual-mod" placeholder="0"></td>
+                    <td id="int-total" class="total">+0</td>
+                  </tr>
+                  <tr>
+                    <td>Wisdom</td>
+                    <td><input type="number" id="wis-score" min="1" max="20" required></td>
+                    <td id="wis-mod-calc" class="calc">+0</td>
+                    <td><input type="number" id="wis-manual-mod" placeholder="0"></td>
+                    <td id="wis-total" class="total">+0</td>
+                  </tr>
+                  <tr>
+                    <td>Charisma</td>
+                    <td><input type="number" id="cha-score" min="1" max="20" required></td>
+                    <td id="cha-mod-calc" class="calc">+0</td>
+                    <td><input type="number" id="cha-manual-mod" placeholder="0"></td>
+                    <td id="cha-total" class="total">+0</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Saving Throws -->
+            <div class="card">
+              <h3>Saving Throws</h3>
+              <table class="saves-table">
+                <thead>
+                  <tr>
+                    <th>Saving Throw</th>
+                    <th>Proficient</th>
+                    <th>Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Strength</td>
+                    <td><input type="checkbox" id="str-save-prof"></td>
+                    <td id="str-save-total" class="total">+0</td>
+                  </tr>
+                  <tr>
+                    <td>Dexterity</td>
+                    <td><input type="checkbox" id="dex-save-prof"></td>
+                    <td id="dex-save-total" class="total">+0</td>
+                  </tr>
+                  <tr>
+                    <td>Constitution</td>
+                    <td><input type="checkbox" id="con-save-prof"></td>
+                    <td id="con-save-total" class="total">+0</td>
+                  </tr>
+                  <tr>
+                    <td>Intelligence</td>
+                    <td><input type="checkbox" id="int-save-prof"></td>
+                    <td id="int-save-total" class="total">+0</td>
+                  </tr>
+                  <tr>
+                    <td>Wisdom</td>
+                    <td><input type="checkbox" id="wis-save-prof"></td>
+                    <td id="wis-save-total" class="total">+0</td>
+                  </tr>
+                  <tr>
+                    <td>Charisma</td>
+                    <td><input type="checkbox" id="cha-save-prof"></td>
+                    <td id="cha-save-total" class="total">+0</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Skills -->
+            <div class="card">
+              <h3>Skills</h3>
+              <table class="skills-table">
+                <thead>
+                  <tr>
+                    <th>Skill</th>
+                    <th>Proficient</th>
+                    <th>Specialized</th>
+                    <th>Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Acrobatics (Dex)</td>
+                    <td><input type="checkbox" id="acrobatics-prof"></td>
+                    <td><input type="checkbox" id="acrobatics-exp"></td>
+                    <td id="acrobatics-total" class="total">+0</td>
+                  </tr>
+                  <tr>
+                    <td>Animal Handling (Wis)</td>
+                    <td><input type="checkbox" id="animal-handling-prof"></td>
+                    <td><input type="checkbox" id="animal-handling-exp"></td>
+                    <td id="animal-handling-total" class="total">+0</td>
+                  </tr>
+                  <tr>
+                    <td>Arcana (Int)</td>
+                    <td><input type="checkbox" id="arcana-prof"></td>
+                    <td><input type="checkbox" id="arcana-exp"></td>
+                    <td id="arcana-total" class="total">+0</td>
+                  </tr>
+                  <tr>
+                    <td>Athletics (Str)</td>
+                    <td><input type="checkbox" id="athletics-prof"></td>
+                    <td><input type="checkbox" id="athletics-exp"></td>
+                    <td id="athletics-total" class="total">+0</td>
+                  </tr>
+                  <tr>
+                    <td>Deception (Cha)</td>
+                    <td><input type="checkbox" id="deception-prof"></td>
+                    <td><input type="checkbox" id="deception-exp"></td>
+                    <td id="deception-total" class="total">+0</td>
+                  </tr>
+                  <tr>
+                    <td>History (Int)</td>
+                    <td><input type="checkbox" id="history-prof"></td>
+                    <td><input type="checkbox" id="history-exp"></td>
+                    <td id="history-total" class="total">+0</td>
+                  </tr>
+                  <tr>
+                    <td>Insight (Wis)</td>
+                    <td><input type="checkbox" id="insight-prof"></td>
+                    <td><input type="checkbox" id="insight-exp"></td>
+                    <td id="insight-total" class="total">+0</td>
+                  </tr>
+                  <tr>
+                    <td>Intimidation (Cha)</td>
+                    <td><input type="checkbox" id="intimidation-prof"></td>
+                    <td><input type="checkbox" id="intimidation-exp"></td>
+                    <td id="intimidation-total" class="total">+0</td>
+                  </tr>
+                  <tr>
+                    <td>Investigation (Int)</td>
+                    <td><input type="checkbox" id="investigation-prof"></td>
+                    <td><input type="checkbox" id="investigation-exp"></td>
+                    <td id="investigation-total" class="total">+0</td>
+                  </tr>
+                  <tr>
+                    <td>Medicine (Wis)</td>
+                    <td><input type="checkbox" id="medicine-prof"></td>
+                    <td><input type="checkbox" id="medicine-exp"></td>
+                    <td id="medicine-total" class="total">+0</td>
+                  </tr>
+                  <tr>
+                    <td>Nature (Int)</td>
+                    <td><input type="checkbox" id="nature-prof"></td>
+                    <td><input type="checkbox" id="nature-exp"></td>
+                    <td id="nature-total" class="total">+0</td>
+                  </tr>
+                  <tr>
+                    <td>Perception (Wis)</td>
+                    <td><input type="checkbox" id="perception-prof"></td>
+                    <td><input type="checkbox" id="perception-exp"></td>
+                    <td id="perception-total" class="total">+0</td>
+                  </tr>
+                  <tr>
+                    <td>Performance (Cha)</td>
+                    <td><input type="checkbox" id="performance-prof"></td>
+                    <td><input type="checkbox" id="performance-exp"></td>
+                    <td id="performance-total" class="total">+0</td>
+                  </tr>
+                  <tr>
+                    <td>Persuasion (Cha)</td>
+                    <td><input type="checkbox" id="persuasion-prof"></td>
+                    <td><input type="checkbox" id="persuasion-exp"></td>
+                    <td id="persuasion-total" class="total">+0</td>
+                  </tr>
+                  <tr>
+                    <td>Religion (Int)</td>
+                    <td><input type="checkbox" id="religion-prof"></td>
+                    <td><input type="checkbox" id="religion-exp"></td>
+                    <td id="religion-total" class="total">+0</td>
+                  </tr>
+                  <tr>
+                    <td>Sleight of Hand (Dex)</td>
+                    <td><input type="checkbox" id="sleight-of-hand-prof"></td>
+                    <td><input type="checkbox" id="sleight-of-hand-exp"></td>
+                    <td id="sleight-of-hand-total" class="total">+0</td>
+                  </tr>
+                  <tr>
+                    <td>Stealth (Dex)</td>
+                    <td><input type="checkbox" id="stealth-prof"></td>
+                    <td><input type="checkbox" id="stealth-exp"></td>
+                    <td id="stealth-total" class="total">+0</td>
+                  </tr>
+                  <tr>
+                    <td>Survival (Wis)</td>
+                    <td><input type="checkbox" id="survival-prof"></td>
+                    <td><input type="checkbox" id="survival-exp"></td>
+                    <td id="survival-total" class="total">+0</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div class="equipment-section">
+          <div class="tabs">
+            <button type="button" class="tab-button active" data-tab="equipment">Equipment</button>
+            <button type="button" class="tab-button" data-tab="features">Class Features and Feats</button>
+            <button type="button" class="tab-button" data-tab="spells">Spells</button>
+          </div>
+          <div class="tab-content">
+            <div id="equipment-tab" class="tab-pane active">
+              <textarea id="char-equipment" rows="10" placeholder="List your equipment here..."></textarea>
+            </div>
+            <div id="features-tab" class="tab-pane">
+              <textarea id="char-features" rows="10" placeholder="List your class features and feats here..."></textarea>
+            </div>
+            <div id="spells-tab" class="tab-pane">
+              <div class="spells-section">
+                <div class="spellcasting-info">
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label for="spellcasting-class">Spellcasting Class:</label>
+                      <input type="text" id="spellcasting-class" placeholder="e.g., Wizard">
+                    </div>
+                    <div class="form-group">
+                      <label for="spellcasting-ability-display">Spellcasting Ability:</label>
+                      <span id="spellcasting-ability-display" class="calc">None</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="cantrips-section">
+                  <h4>Cantrips</h4>
+                  <div class="cantrips-list">
+                    <input type="text" id="cantrip-1" placeholder="Cantrip name">
+                    <input type="text" id="cantrip-2" placeholder="Cantrip name">
+                    <input type="text" id="cantrip-3" placeholder="Cantrip name">
+                    <input type="text" id="cantrip-4" placeholder="Cantrip name">
+                    <input type="text" id="cantrip-5" placeholder="Cantrip name">
+                    <input type="text" id="cantrip-6" placeholder="Cantrip name">
+                    <input type="text" id="cantrip-7" placeholder="Cantrip name">
+                    <input type="text" id="cantrip-8" placeholder="Cantrip name">
+                  </div>
+                </div>
+
+                <div class="prepared-spells-section">
+                  <h4>Spellcasting</h4>
+                  <div class="spell-level">
+                    <h5>1st Level</h5>
+                    <div class="spell-slots-info">
+                      <span>Spell Slots: <span id="spell-slot-1-display" class="calc">0</span></span>
+                    </div>
+                    <div class="prepared-spells-list">
+                      <input type="text" id="spell-1-1" placeholder="Spell name">
+                      <input type="text" id="spell-1-2" placeholder="Spell name">
+                      <input type="text" id="spell-1-3" placeholder="Spell name">
+                      <input type="text" id="spell-1-4" placeholder="Spell name">
+                      <input type="text" id="spell-1-5" placeholder="Spell name">
+                      <input type="text" id="spell-1-6" placeholder="Spell name">
+                      <input type="text" id="spell-1-7" placeholder="Spell name">
+                      <input type="text" id="spell-1-8" placeholder="Spell name">
+                      <input type="text" id="spell-1-9" placeholder="Spell name">
+                      <input type="text" id="spell-1-10" placeholder="Spell name">
+                      <input type="text" id="spell-1-11" placeholder="Spell name">
+                      <input type="text" id="spell-1-12" placeholder="Spell name">
+                      <input type="text" id="spell-1-13" placeholder="Spell name">
+                      <input type="text" id="spell-1-14" placeholder="Spell name">
+                      <input type="text" id="spell-1-15" placeholder="Spell name">
+                    </div>
+                  </div>
+
+                  <div class="spell-level">
+                    <h5>2nd Level</h5>
+                    <div class="spell-slots-info">
+                      <span>Spell Slots: <span id="spell-slot-2-display" class="calc">0</span></span>
+                    </div>
+                    <div class="prepared-spells-list">
+                      <input type="text" id="spell-2-1" placeholder="Spell name">
+                      <input type="text" id="spell-2-2" placeholder="Spell name">
+                      <input type="text" id="spell-2-3" placeholder="Spell name">
+                      <input type="text" id="spell-2-4" placeholder="Spell name">
+                      <input type="text" id="spell-2-5" placeholder="Spell name">
+                      <input type="text" id="spell-2-6" placeholder="Spell name">
+                      <input type="text" id="spell-2-7" placeholder="Spell name">
+                      <input type="text" id="spell-2-8" placeholder="Spell name">
+                      <input type="text" id="spell-2-9" placeholder="Spell name">
+                      <input type="text" id="spell-2-10" placeholder="Spell name">
+                      <input type="text" id="spell-2-11" placeholder="Spell name">
+                      <input type="text" id="spell-2-12" placeholder="Spell name">
+                      <input type="text" id="spell-2-13" placeholder="Spell name">
+                    </div>
+                  </div>
+
+                  <div class="spell-level">
+                    <h5>3rd Level</h5>
+                    <div class="spell-slots-info">
+                      <span>Spell Slots: <span id="spell-slot-3-display" class="calc">0</span></span>
+                    </div>
+                    <div class="prepared-spells-list">
+                      <input type="text" id="spell-3-1" placeholder="Spell name">
+                      <input type="text" id="spell-3-2" placeholder="Spell name">
+                      <input type="text" id="spell-3-3" placeholder="Spell name">
+                      <input type="text" id="spell-3-4" placeholder="Spell name">
+                      <input type="text" id="spell-3-5" placeholder="Spell name">
+                      <input type="text" id="spell-3-6" placeholder="Spell name">
+                      <input type="text" id="spell-3-7" placeholder="Spell name">
+                      <input type="text" id="spell-3-8" placeholder="Spell name">
+                      <input type="text" id="spell-3-9" placeholder="Spell name">
+                      <input type="text" id="spell-3-10" placeholder="Spell name">
+                      <input type="text" id="spell-3-11" placeholder="Spell name">
+                      <input type="text" id="spell-3-12" placeholder="Spell name">
+                      <input type="text" id="spell-3-13" placeholder="Spell name">
+                    </div>
+                  </div>
+
+                  <div class="spell-level">
+                    <h5>4th Level</h5>
+                    <div class="spell-slots-info">
+                      <span>Spell Slots: <span id="spell-slot-4-display" class="calc">0</span></span>
+                    </div>
+                    <div class="prepared-spells-list">
+                      <input type="text" id="spell-4-1" placeholder="Spell name">
+                      <input type="text" id="spell-4-2" placeholder="Spell name">
+                      <input type="text" id="spell-4-3" placeholder="Spell name">
+                      <input type="text" id="spell-4-4" placeholder="Spell name">
+                      <input type="text" id="spell-4-5" placeholder="Spell name">
+                      <input type="text" id="spell-4-6" placeholder="Spell name">
+                      <input type="text" id="spell-4-7" placeholder="Spell name">
+                    </div>
+                  </div>
+
+                  <div class="spell-level">
+                    <h5>5th Level</h5>
+                    <div class="spell-slots-info">
+                      <span>Spell Slots: <span id="spell-slot-5-display" class="calc">0</span></span>
+                    </div>
+                    <div class="prepared-spells-list">
+                      <input type="text" id="spell-5-1" placeholder="Spell name">
+                      <input type="text" id="spell-5-2" placeholder="Spell name">
+                      <input type="text" id="spell-5-3" placeholder="Spell name">
+                      <input type="text" id="spell-5-4" placeholder="Spell name">
+                      <input type="text" id="spell-5-5" placeholder="Spell name">
+                      <input type="text" id="spell-5-6" placeholder="Spell name">
+                      <input type="text" id="spell-5-7" placeholder="Spell name">
+                    </div>
+                  </div>
+
+                  <div class="spell-level">
+                    <h5>6th Level</h5>
+                    <div class="spell-slots-info">
+                      <span>Spell Slots: <span id="spell-slot-6-display" class="calc">0</span></span>
+                    </div>
+                    <div class="prepared-spells-list">
+                      <input type="text" id="spell-6-1" placeholder="Spell name">
+                      <input type="text" id="spell-6-2" placeholder="Spell name">
+                      <input type="text" id="spell-6-3" placeholder="Spell name">
+                      <input type="text" id="spell-6-4" placeholder="Spell name">
+                      <input type="text" id="spell-6-5" placeholder="Spell name">
+                    </div>
+                  </div>
+
+                  <div class="spell-level">
+                    <h5>7th Level</h5>
+                    <div class="spell-slots-info">
+                      <span>Spell Slots: <span id="spell-slot-7-display" class="calc">0</span></span>
+                    </div>
+                    <div class="prepared-spells-list">
+                      <input type="text" id="spell-7-1" placeholder="Spell name">
+                      <input type="text" id="spell-7-2" placeholder="Spell name">
+                      <input type="text" id="spell-7-3" placeholder="Spell name">
+                      <input type="text" id="spell-7-4" placeholder="Spell name">
+                      <input type="text" id="spell-7-5" placeholder="Spell name">
+                    </div>
+                  </div>
+
+                  <div class="spell-level">
+                    <h5>8th Level</h5>
+                    <div class="spell-slots-info">
+                      <span>Spell Slots: <span id="spell-slot-8-display" class="calc">0</span></span>
+                    </div>
+                    <div class="prepared-spells-list">
+                      <input type="text" id="spell-8-1" placeholder="Spell name">
+                      <input type="text" id="spell-8-2" placeholder="Spell name">
+                      <input type="text" id="spell-8-3" placeholder="Spell name">
+                      <input type="text" id="spell-8-4" placeholder="Spell name">
+                    </div>
+                  </div>
+
+                  <div class="spell-level">
+                    <h5>9th Level</h5>
+                    <div class="spell-slots-info">
+                      <span>Spell Slots: <span id="spell-slot-9-display" class="calc">0</span></span>
+                    </div>
+                    <div class="prepared-spells-list">
+                      <input type="text" id="spell-9-1" placeholder="Spell name">
+                      <input type="text" id="spell-9-2" placeholder="Spell name">
+                      <input type="text" id="spell-9-3" placeholder="Spell name">
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <button type="submit" id="save-char-btn">Save Character</button>
+        </form>
+      </section>
     </main>
   </div>
 
