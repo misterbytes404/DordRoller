@@ -82,6 +82,21 @@ io.on('connection', (socket) => {
     io.to(data.roomCode).emit('broadcast_roll', data);
   });
 
+  // Player Roll Handler
+  socket.on('player_roll', (data) => {
+    // Data Validation
+    if (!data.roomCode || !data.diceType || !data.label || typeof data.result !== 'number') {
+      socket.emit('error', { message: 'Invalid roll data' });
+      return;
+    }
+    console.log(`Player Roll in Room ${data.roomCode}: ${data.roller} - ${data.label} - ${data.result}`);
+    // Broadcast to room (GM, OBS, and other players)
+    io.to(data.roomCode).emit('broadcast_roll', {
+      ...data,
+      isPlayerRoll: true
+    });
+  });
+
   socket.on('disconnect', () => {
     console.log(`Client disconnected: ${socket.id}`);
     // Remove from rooms

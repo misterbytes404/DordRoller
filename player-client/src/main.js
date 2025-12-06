@@ -70,9 +70,9 @@ let characterSheet = {
     ac: 0
   },
   weapons: [
-    { name: '', damage: '', properties: '' },
-    { name: '', damage: '', properties: '' },
-    { name: '', damage: '', properties: '' }
+    { name: '', damage: '', properties: '', ability: 'str' },
+    { name: '', damage: '', properties: '', ability: 'str' },
+    { name: '', damage: '', properties: '', ability: 'str' }
   ],
   equipment: '',
   features: '',
@@ -247,6 +247,9 @@ function loadCharacterSheet() {
     document.getElementById(`weapon-${index + 1}-name`).value = weapon.name;
     document.getElementById(`weapon-${index + 1}-damage`).value = weapon.damage;
     document.getElementById(`weapon-${index + 1}-properties`).value = weapon.properties;
+    if (document.getElementById(`weapon-${index + 1}-ability`)) {
+      document.getElementById(`weapon-${index + 1}-ability`).value = weapon.ability || 'str';
+    }
   });
 
   // Equipment
@@ -458,7 +461,8 @@ document.getElementById('char-form').addEventListener('submit', (e) => {
     characterSheet.weapons.push({
       name: document.getElementById(`weapon-${i}-name`).value,
       damage: document.getElementById(`weapon-${i}-damage`).value,
-      properties: document.getElementById(`weapon-${i}-properties`).value
+      properties: document.getElementById(`weapon-${i}-properties`).value,
+      ability: document.getElementById(`weapon-${i}-ability`) ? document.getElementById(`weapon-${i}-ability`).value : 'str'
     });
   }
 
@@ -545,4 +549,538 @@ document.querySelectorAll('.combat-tab-button').forEach(button => {
     button.classList.add('active');
     document.getElementById(button.dataset.tab + '-tab').classList.add('active');
   });
+});
+
+// ===== PLAYER DICE ROLLER (Phase 1: Quick Roll Buttons) =====
+
+const abilityNames = {
+  str: 'Strength',
+  dex: 'Dexterity',
+  con: 'Constitution',
+  int: 'Intelligence',
+  wis: 'Wisdom',
+  cha: 'Charisma'
+};
+
+const skillNames = {
+  'acrobatics': 'Acrobatics',
+  'animal-handling': 'Animal Handling',
+  'arcana': 'Arcana',
+  'athletics': 'Athletics',
+  'deception': 'Deception',
+  'history': 'History',
+  'insight': 'Insight',
+  'intimidation': 'Intimidation',
+  'investigation': 'Investigation',
+  'medicine': 'Medicine',
+  'nature': 'Nature',
+  'perception': 'Perception',
+  'performance': 'Performance',
+  'persuasion': 'Persuasion',
+  'religion': 'Religion',
+  'sleight-of-hand': 'Sleight of Hand',
+  'stealth': 'Stealth',
+  'survival': 'Survival'
+};
+
+function rollD20() {
+  return Math.floor(Math.random() * 20) + 1;
+}
+
+function getModifierFromElement(elementId) {
+  const element = document.getElementById(elementId);
+  if (!element) return 0;
+  const text = element.textContent;
+  return parseInt(text) || 0;
+}
+
+function handleQuickRoll(rollType, key) {
+  if (!currentRoom) {
+    alert('Please join a room first!');
+    return;
+  }
+
+  let modifier = 0;
+  let label = '';
+  let characterName = document.getElementById('char-name').value || 'Unknown';
+
+  if (rollType === 'ability') {
+    modifier = getModifierFromElement(`${key}-total`);
+    label = `${abilityNames[key]} Check`;
+  } else if (rollType === 'save') {
+    modifier = getModifierFromElement(`${key}-save-total`);
+    label = `${abilityNames[key]} Save`;
+  } else if (rollType === 'skill') {
+    modifier = getModifierFromElement(`${key}-total`);
+    label = `${skillNames[key]} Check`;
+  }
+
+  const d20Result = rollD20();
+  const total = d20Result + modifier;
+
+  const rollData = {
+    roomCode: currentRoom,
+    roller: playerName,
+    characterName: characterName,
+    diceType: 'd20',
+    quantity: 1,
+    result: total,
+    label: label,
+    modifier: modifier,
+    rawResult: d20Result,
+    individualRolls: [d20Result],
+    rollType: 'normal',
+    timestamp: Date.now()
+  };
+
+  // Emit the roll to the server
+  socket.emit('player_roll', rollData);
+  console.log('Player roll sent:', rollData);
+
+  // Show feedback to the player
+  showRollFeedback(d20Result, modifier, total, label);
+}
+
+function showRollFeedback(roll, modifier, total, label) {
+  const toast = document.getElementById('roll-toast');
+  const modSign = modifier >= 0 ? '+' : '';
+  
+  // Remove any existing classes
+  toast.classList.remove('show', 'nat-20', 'nat-1');
+  
+  // Add nat 20/1 class if applicable
+  if (roll === 20) toast.classList.add('nat-20');
+  else if (roll === 1) toast.classList.add('nat-1');
+  
+  toast.innerHTML = `
+    <button class="roll-toast-close" onclick="closeRollToast()">&times;</button>
+    <div class="roll-toast-content">
+      <div class="roll-toast-header">${label}</div>
+      <div class="roll-toast-body">
+        <span class="roll-toast-dice">
+          <i class="fa-solid fa-dice-d20"></i>
+          <span class="roll-value">${roll}</span>
+        </span>
+        <span class="roll-toast-modifier">${modSign}${modifier}</span>
+        <span>=</span>
+        <span class="roll-toast-total">${total}</span>
+      </div>
+    </div>
+  `;
+  
+  // Trigger reflow and show
+  void toast.offsetWidth;
+  toast.classList.add('show');
+  
+  // Auto-hide after 5 seconds
+  clearTimeout(window.rollToastTimeout);
+  window.rollToastTimeout = setTimeout(() => {
+    toast.classList.remove('show');
+  }, 5000);
+}
+
+// Global function to close toast
+window.closeRollToast = function() {
+  const toast = document.getElementById('roll-toast');
+  toast.classList.remove('show');
+  clearTimeout(window.rollToastTimeout);
+};
+
+// Attach event listeners to ability/save/skill roll buttons ONLY (not attack/damage/combat buttons)
+document.querySelectorAll('.roll-btn[data-roll-type="ability"], .roll-btn[data-roll-type="save"], .roll-btn[data-roll-type="skill"]').forEach(button => {
+  button.addEventListener('click', (e) => {
+    e.preventDefault();
+    const rollType = button.dataset.rollType;
+    const key = button.dataset.ability || button.dataset.skill;
+    handleQuickRoll(rollType, key);
+  });
+});
+
+// ===== COMBAT DICE ROLLER (Phase 2: Attack, Damage, Initiative, Spell Attack) =====
+
+// Roll any dice
+function rollDice(sides) {
+  return Math.floor(Math.random() * sides) + 1;
+}
+
+// Roll multiple dice
+function rollMultipleDice(count, sides) {
+  const rolls = [];
+  for (let i = 0; i < count; i++) {
+    rolls.push(rollDice(sides));
+  }
+  return rolls;
+}
+
+// Parse dice notation (e.g., "2d6+3", "1d8", "4d6+2")
+function parseDiceNotation(notation) {
+  if (!notation) return null;
+  
+  // Clean the notation
+  const clean = notation.toLowerCase().replace(/\s/g, '');
+  
+  // Match patterns like 2d6+3, 1d8, 2d6-1, etc.
+  const match = clean.match(/^(\d+)?d(\d+)([+-]\d+)?$/);
+  
+  if (!match) return null;
+  
+  return {
+    count: parseInt(match[1]) || 1,
+    sides: parseInt(match[2]),
+    modifier: parseInt(match[3]) || 0
+  };
+}
+
+// Get attack modifier for a weapon
+function getWeaponAttackModifier(weaponIndex) {
+  const abilitySelect = document.getElementById(`weapon-${weaponIndex}-ability`);
+  const ability = abilitySelect ? abilitySelect.value : 'str';
+  const abilityMod = getModifierFromElement(`${ability}-total`);
+  const level = parseInt(document.getElementById('char-level').value) || 1;
+  const profBonus = getProficiencyBonus(level);
+  
+  return abilityMod + profBonus;
+}
+
+// Handle initiative roll
+function handleInitiativeRoll() {
+  if (!currentRoom) {
+    alert('Please join a room first!');
+    return;
+  }
+  
+  const modifier = getModifierFromElement('char-initiative');
+  const characterName = document.getElementById('char-name').value || 'Unknown';
+  const d20Result = rollD20();
+  const total = d20Result + modifier;
+  
+  const rollData = {
+    roomCode: currentRoom,
+    roller: playerName,
+    characterName: characterName,
+    diceType: 'd20',
+    quantity: 1,
+    result: total,
+    label: 'Initiative',
+    modifier: modifier,
+    rawResult: d20Result,
+    individualRolls: [d20Result],
+    rollType: 'initiative',
+    timestamp: Date.now()
+  };
+  
+  socket.emit('player_roll', rollData);
+  showRollFeedback(d20Result, modifier, total, 'Initiative');
+}
+
+// Handle spell attack roll
+function handleSpellAttackRoll() {
+  if (!currentRoom) {
+    alert('Please join a room first!');
+    return;
+  }
+  
+  const modifier = parseInt(document.getElementById('spell-attack-bonus').value) || 0;
+  const characterName = document.getElementById('char-name').value || 'Unknown';
+  const d20Result = rollD20();
+  const total = d20Result + modifier;
+  
+  const rollData = {
+    roomCode: currentRoom,
+    roller: playerName,
+    characterName: characterName,
+    diceType: 'd20',
+    quantity: 1,
+    result: total,
+    label: 'Spell Attack',
+    modifier: modifier,
+    rawResult: d20Result,
+    individualRolls: [d20Result],
+    rollType: 'spell-attack',
+    timestamp: Date.now()
+  };
+  
+  socket.emit('player_roll', rollData);
+  showRollFeedback(d20Result, modifier, total, 'Spell Attack');
+}
+
+// Handle weapon attack roll
+function handleWeaponAttackRoll(weaponIndex) {
+  if (!currentRoom) {
+    alert('Please join a room first!');
+    return;
+  }
+  
+  const weaponName = document.getElementById(`weapon-${weaponIndex}-name`).value || `Weapon ${weaponIndex}`;
+  const modifier = getWeaponAttackModifier(weaponIndex);
+  const characterName = document.getElementById('char-name').value || 'Unknown';
+  const d20Result = rollD20();
+  const total = d20Result + modifier;
+  
+  const rollData = {
+    roomCode: currentRoom,
+    roller: playerName,
+    characterName: characterName,
+    diceType: 'd20',
+    quantity: 1,
+    result: total,
+    label: `${weaponName} Attack`,
+    modifier: modifier,
+    rawResult: d20Result,
+    individualRolls: [d20Result],
+    rollType: 'weapon-attack',
+    timestamp: Date.now()
+  };
+  
+  socket.emit('player_roll', rollData);
+  showRollFeedback(d20Result, modifier, total, `${weaponName} Attack`);
+}
+
+// ===== DAMAGE MODAL =====
+let currentDamageContext = {
+  weaponIndex: null,
+  weaponName: '',
+  isSpell: false
+};
+
+function openDamageModal(weaponIndex = null, isSpell = false) {
+  const modal = document.getElementById('damage-modal');
+  const title = document.getElementById('damage-modal-title');
+  
+  currentDamageContext.weaponIndex = weaponIndex;
+  currentDamageContext.isSpell = isSpell;
+  
+  if (isSpell) {
+    title.textContent = 'Roll Spell Damage';
+    currentDamageContext.weaponName = 'Spell';
+    
+    // Parse spell damage dice
+    const spellDamage = document.getElementById('spell-damage-dice').value;
+    const parsed = parseDiceNotation(spellDamage);
+    
+    if (parsed) {
+      document.getElementById('damage-dice-count').value = parsed.count;
+      document.getElementById('damage-dice-type').value = parsed.sides;
+      document.getElementById('damage-modifier').value = parsed.modifier;
+    } else {
+      // Default spell damage
+      document.getElementById('damage-dice-count').value = 1;
+      document.getElementById('damage-dice-type').value = 6;
+      document.getElementById('damage-modifier').value = 0;
+    }
+  } else {
+    const weaponName = document.getElementById(`weapon-${weaponIndex}-name`).value || `Weapon ${weaponIndex}`;
+    title.textContent = `Roll ${weaponName} Damage`;
+    currentDamageContext.weaponName = weaponName;
+    
+    // Parse weapon damage
+    const weaponDamage = document.getElementById(`weapon-${weaponIndex}-damage`).value;
+    const parsed = parseDiceNotation(weaponDamage);
+    
+    if (parsed) {
+      document.getElementById('damage-dice-count').value = parsed.count;
+      document.getElementById('damage-dice-type').value = parsed.sides;
+      document.getElementById('damage-modifier').value = parsed.modifier;
+    } else {
+      // Default weapon damage
+      document.getElementById('damage-dice-count').value = 1;
+      document.getElementById('damage-dice-type').value = 8;
+      document.getElementById('damage-modifier').value = 0;
+    }
+  }
+  
+  // Reset extra dice and crit
+  document.getElementById('extra-dice-count').value = 0;
+  document.getElementById('damage-crit-toggle').checked = false;
+  
+  updateDamagePreview();
+  modal.classList.add('show');
+}
+
+function closeDamageModal() {
+  const modal = document.getElementById('damage-modal');
+  modal.classList.remove('show');
+}
+
+function updateDamagePreview() {
+  const baseCount = parseInt(document.getElementById('damage-dice-count').value) || 1;
+  const baseSides = document.getElementById('damage-dice-type').value;
+  const modifier = parseInt(document.getElementById('damage-modifier').value) || 0;
+  const extraCount = parseInt(document.getElementById('extra-dice-count').value) || 0;
+  const extraSides = document.getElementById('extra-dice-type').value;
+  const isCrit = document.getElementById('damage-crit-toggle').checked;
+  
+  let preview = '';
+  const critMultiplier = isCrit ? 2 : 1;
+  const effectiveBaseCount = baseCount * critMultiplier;
+  const effectiveExtraCount = extraCount * critMultiplier;
+  
+  preview += `${effectiveBaseCount}d${baseSides}`;
+  
+  if (effectiveExtraCount > 0) {
+    preview += ` + ${effectiveExtraCount}d${extraSides}`;
+  }
+  
+  if (modifier !== 0) {
+    preview += modifier >= 0 ? ` + ${modifier}` : ` - ${Math.abs(modifier)}`;
+  }
+  
+  if (isCrit) {
+    preview += ' (CRIT!)';
+  }
+  
+  document.getElementById('damage-preview-text').textContent = preview;
+}
+
+function executeDamageRoll() {
+  if (!currentRoom) {
+    alert('Please join a room first!');
+    closeDamageModal();
+    return;
+  }
+  
+  const baseCount = parseInt(document.getElementById('damage-dice-count').value) || 1;
+  const baseSides = parseInt(document.getElementById('damage-dice-type').value);
+  const modifier = parseInt(document.getElementById('damage-modifier').value) || 0;
+  const extraCount = parseInt(document.getElementById('extra-dice-count').value) || 0;
+  const extraSides = parseInt(document.getElementById('extra-dice-type').value);
+  const isCrit = document.getElementById('damage-crit-toggle').checked;
+  
+  const critMultiplier = isCrit ? 2 : 1;
+  const effectiveBaseCount = baseCount * critMultiplier;
+  const effectiveExtraCount = extraCount * critMultiplier;
+  
+  // Roll base damage
+  const baseRolls = rollMultipleDice(effectiveBaseCount, baseSides);
+  const baseTotal = baseRolls.reduce((a, b) => a + b, 0);
+  
+  // Roll extra damage
+  let extraRolls = [];
+  let extraTotal = 0;
+  if (effectiveExtraCount > 0) {
+    extraRolls = rollMultipleDice(effectiveExtraCount, extraSides);
+    extraTotal = extraRolls.reduce((a, b) => a + b, 0);
+  }
+  
+  const total = baseTotal + extraTotal + modifier;
+  const characterName = document.getElementById('char-name').value || 'Unknown';
+  
+  // Build description
+  let diceDescription = `${effectiveBaseCount}d${baseSides}`;
+  if (effectiveExtraCount > 0) {
+    diceDescription += ` + ${effectiveExtraCount}d${extraSides}`;
+  }
+  
+  const rollData = {
+    roomCode: currentRoom,
+    roller: playerName,
+    characterName: characterName,
+    diceType: 'damage',
+    quantity: effectiveBaseCount + effectiveExtraCount,
+    result: total,
+    label: `${currentDamageContext.weaponName} Damage${isCrit ? ' (CRITICAL!)' : ''}`,
+    modifier: modifier,
+    rawResult: baseTotal + extraTotal,
+    individualRolls: [...baseRolls, ...extraRolls],
+    rollType: currentDamageContext.isSpell ? 'spell-damage' : 'weapon-damage',
+    isCritical: isCrit,
+    diceDescription: diceDescription,
+    timestamp: Date.now()
+  };
+  
+  socket.emit('player_roll', rollData);
+  
+  // Show damage feedback
+  showDamageFeedback(rollData);
+  
+  closeDamageModal();
+}
+
+function showDamageFeedback(rollData) {
+  const toast = document.getElementById('roll-toast');
+  
+  // Remove any existing classes
+  toast.classList.remove('show', 'nat-20', 'nat-1');
+  
+  // Add crit styling if applicable
+  if (rollData.isCritical) {
+    toast.classList.add('nat-20');
+  }
+  
+  // Format the rolls display
+  const rollsDisplay = rollData.individualRolls.map(r => r).join(' + ');
+  const modSign = rollData.modifier >= 0 ? '+' : '';
+  
+  toast.innerHTML = `
+    <button class="roll-toast-close" onclick="closeRollToast()">&times;</button>
+    <div class="roll-toast-content">
+      <div class="roll-toast-header">${rollData.label}</div>
+      <div class="roll-toast-body damage-toast-body">
+        <div class="damage-dice-display">
+          <i class="fa-solid fa-burst"></i>
+          <span class="damage-rolls">[${rollsDisplay}]</span>
+        </div>
+        <span class="roll-toast-modifier">${modSign}${rollData.modifier}</span>
+        <span>=</span>
+        <span class="roll-toast-total">${rollData.result}</span>
+      </div>
+      <div class="damage-dice-notation">${rollData.diceDescription}${rollData.modifier !== 0 ? (modSign + rollData.modifier) : ''}</div>
+    </div>
+  `;
+  
+  // Trigger reflow and show
+  void toast.offsetWidth;
+  toast.classList.add('show');
+  
+  // Auto-hide after 6 seconds (longer for damage)
+  clearTimeout(window.rollToastTimeout);
+  window.rollToastTimeout = setTimeout(() => {
+    toast.classList.remove('show');
+  }, 6000);
+}
+
+// Event Listeners for Combat Rolls
+document.querySelectorAll('.combat-roll-btn').forEach(button => {
+  button.addEventListener('click', (e) => {
+    e.preventDefault();
+    const rollType = button.dataset.rollType;
+    
+    if (rollType === 'initiative') {
+      handleInitiativeRoll();
+    } else if (rollType === 'spell-attack') {
+      handleSpellAttackRoll();
+    }
+  });
+});
+
+document.querySelectorAll('.attack-btn').forEach(button => {
+  button.addEventListener('click', (e) => {
+    e.preventDefault();
+    const weaponIndex = button.dataset.weapon;
+    handleWeaponAttackRoll(weaponIndex);
+  });
+});
+
+document.querySelectorAll('.damage-btn').forEach(button => {
+  button.addEventListener('click', (e) => {
+    e.preventDefault();
+    const weaponIndex = button.dataset.weapon;
+    const isSpellDamage = button.dataset.rollType === 'spell-damage';
+    openDamageModal(weaponIndex, isSpellDamage);
+  });
+});
+
+// Modal event listeners
+document.getElementById('damage-modal-close').addEventListener('click', closeDamageModal);
+document.getElementById('damage-modal').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) {
+    closeDamageModal();
+  }
+});
+document.getElementById('damage-roll-btn').addEventListener('click', executeDamageRoll);
+
+// Update preview when modal inputs change
+['damage-dice-count', 'damage-dice-type', 'damage-modifier', 'extra-dice-count', 'extra-dice-type', 'damage-crit-toggle'].forEach(id => {
+  document.getElementById(id).addEventListener('input', updateDamagePreview);
+  document.getElementById(id).addEventListener('change', updateDamagePreview);
 });

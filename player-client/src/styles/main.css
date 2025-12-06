@@ -17,7 +17,7 @@ body {
 
 #app {
   width: 100%;
-  max-width: 1200px;
+  max-width: 1400px;
   padding: 20px;
 }
 
@@ -98,18 +98,131 @@ button:hover {
 }
 
 #result-display {
-  background: #ff6b6b;
-  padding: 20px;
-  border-radius: 8px;
-  margin-top: 15px;
-  text-align: center;
-  font-size: 1.5rem;
-  font-weight: bold;
   display: none;
 }
 
-#result-display:not(:empty) {
-  display: block;
+/* Floating Roll Toast */
+.roll-toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+  min-width: 280px;
+  max-width: 350px;
+  background: #2a2a2a;
+  border: 2px solid #4ecdc4;
+  border-radius: 12px;
+  padding: 0;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  transform: translateX(400px);
+  opacity: 0;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.roll-toast.show {
+  transform: translateX(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.roll-toast-content {
+  padding: 16px 20px;
+  text-align: center;
+}
+
+.roll-toast-header {
+  font-size: 0.9rem;
+  color: #4ecdc4;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.roll-toast-body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 1.4rem;
+}
+
+.roll-toast-dice {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.roll-toast-dice .fa-dice-d20 {
+  font-size: 28px;
+  color: #4ecdc4;
+}
+
+.roll-toast-dice .roll-value {
+  font-size: 1.6rem;
+  font-weight: bold;
+  color: #e0e0e0;
+}
+
+.roll-toast-modifier {
+  color: #888;
+}
+
+.roll-toast-total {
+  font-size: 2rem;
+  font-weight: bold;
+  color: #4ecdc4;
+}
+
+/* Nat 20 / Nat 1 styling */
+.roll-toast.nat-20 {
+  border-color: #4caf50;
+  background: linear-gradient(135deg, #1a3a1a, #2a2a2a);
+}
+
+.roll-toast.nat-20 .fa-dice-d20,
+.roll-toast.nat-20 .roll-value {
+  color: #4caf50;
+}
+
+.roll-toast.nat-20 .roll-toast-total {
+  color: #4caf50;
+  text-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+}
+
+.roll-toast.nat-1 {
+  border-color: #f44336;
+  background: linear-gradient(135deg, #3a1a1a, #2a2a2a);
+}
+
+.roll-toast.nat-1 .fa-dice-d20,
+.roll-toast.nat-1 .roll-value {
+  color: #f44336;
+}
+
+.roll-toast.nat-1 .roll-toast-total {
+  color: #f44336;
+  text-shadow: 0 0 10px rgba(244, 67, 54, 0.5);
+}
+
+/* Close button */
+.roll-toast-close {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  background: none;
+  border: none;
+  color: #666;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px;
+  line-height: 1;
+  width: auto;
+  min-width: auto;
+}
+
+.roll-toast-close:hover {
+  color: #e0e0e0;
+  background: none;
 }
 
 /* Character Sheet Styles */
@@ -233,9 +346,76 @@ button:hover {
   background: #2a2a2a;
 }
 
+.abilities-table input[type="number"] {
+  min-width: 60px;
+  width: 70px;
+}
+
 .saves-table input[type="checkbox"], .skills-table input[type="checkbox"] {
   margin: 0;
 }
+
+/* D20 Roll Button Styles */
+.roll-btn {
+  background: transparent;
+  border: 1px solid #4ecdc4;
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  min-width: 32px;
+  color: #e0e0e0;
+  margin: 0;
+  font-size: 14px;
+  font-weight: normal;
+}
+
+.roll-btn:hover {
+  background: #4ecdc4;
+  transform: scale(1.1);
+  color: #1a1a1a;
+}
+
+.roll-btn:hover .fa-dice-d20 {
+  color: #1a1a1a;
+}
+
+.roll-btn:active {
+  transform: scale(0.95);
+}
+
+.roll-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.roll-btn .fa-dice-d20 {
+  font-size: 16px;
+  color: #4ecdc4;
+  transition: color 0.2s ease;
+}
+
+/* Large d20 icon for result display */
+.fa-dice-d20.roll-icon-large {
+  font-size: 24px;
+  color: #4ecdc4;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+/* Alternative: If using Font Awesome later, uncomment this:
+.roll-btn .fa-dice-d20 {
+  font-size: 16px;
+  color: #4ecdc4;
+}
+.roll-btn:hover .fa-dice-d20 {
+  color: #1a1a1a;
+}
+*/
 
 .equipment-section {
   width: 100%;
@@ -380,6 +560,359 @@ button:hover {
   color: #e0e0e0;
   border: 1px solid #444;
   border-radius: 4px;
+}
+
+/* Weapons Table */
+.weapons-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+.weapons-table th, .weapons-table td {
+  padding: 8px;
+  text-align: left;
+  border: 1px solid #444;
+}
+
+.weapons-table th {
+  background: #333;
+  font-weight: bold;
+  color: #4ecdc4;
+  font-size: 0.85rem;
+}
+
+.weapons-table td {
+  background: #2a2a2a;
+}
+
+.weapons-table input[type="text"] {
+  width: 100%;
+  padding: 6px;
+  background: #333;
+  color: #e0e0e0;
+  border: 1px solid #444;
+  border-radius: 4px;
+}
+
+.weapons-table select {
+  padding: 6px;
+  background: #333;
+  color: #e0e0e0;
+  border: 1px solid #444;
+  border-radius: 4px;
+  width: 100%;
+}
+
+.weapon-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: nowrap;
+}
+
+/* Attack and Damage Buttons */
+.attack-btn, .damage-btn {
+  font-size: 0.75rem;
+  padding: 6px 10px;
+  white-space: nowrap;
+  color: #e0e0e0;
+  margin: 0;
+  font-weight: normal;
+}
+
+.attack-btn {
+  border-color: #4ecdc4;
+}
+
+.attack-btn:hover {
+  background: #4ecdc4;
+  color: #1a1a1a;
+}
+
+.damage-btn {
+  border-color: #ff6b6b;
+}
+
+.damage-btn:hover {
+  background: #ff6b6b;
+  color: #1a1a1a;
+}
+
+.damage-btn .fa-burst {
+  color: #ff6b6b;
+  margin-right: 4px;
+}
+
+.damage-btn:hover .fa-burst {
+  color: #1a1a1a;
+}
+
+/* Inline Roll Group (for initiative, spell attack) */
+.inline-roll-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.inline-roll-group .calc {
+  min-width: 40px;
+}
+
+.inline-roll-group input {
+  flex: 1;
+}
+
+.combat-roll-btn {
+  flex-shrink: 0;
+}
+
+/* Spell Damage Section */
+.spell-damage-section {
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 1px solid #444;
+}
+
+.spell-damage-section h4 {
+  color: #4ecdc4;
+  margin-bottom: 10px;
+}
+
+.spell-damage-action {
+  display: flex;
+  align-items: flex-end;
+}
+
+.spell-damage-btn {
+  padding: 10px 16px;
+  font-size: 0.9rem;
+}
+
+/* ===== DAMAGE ROLL MODAL ===== */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.modal-overlay.show {
+  opacity: 1;
+  visibility: visible;
+}
+
+.modal-content {
+  background: #2a2a2a;
+  border: 2px solid #4ecdc4;
+  border-radius: 12px;
+  padding: 24px;
+  min-width: 380px;
+  max-width: 450px;
+  position: relative;
+  transform: scale(0.9);
+  transition: transform 0.3s ease;
+}
+
+.modal-overlay.show .modal-content {
+  transform: scale(1);
+}
+
+.modal-close {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  background: none;
+  border: none;
+  color: #666;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 4px;
+  line-height: 1;
+  width: auto;
+  min-width: auto;
+}
+
+.modal-close:hover {
+  color: #e0e0e0;
+  background: none;
+}
+
+.modal-content h3 {
+  color: #4ecdc4;
+  margin-bottom: 20px;
+  text-align: center;
+  font-size: 1.3rem;
+}
+
+.damage-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.damage-section {
+  background: #333;
+  padding: 12px;
+  border-radius: 8px;
+}
+
+.damage-section label {
+  display: block;
+  color: #4ecdc4;
+  font-size: 0.85rem;
+  margin-bottom: 8px;
+  font-weight: bold;
+}
+
+.dice-input-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.dice-input-group span {
+  color: #888;
+  font-size: 1.1rem;
+}
+
+.dice-count-input {
+  width: 60px !important;
+  text-align: center;
+  padding: 8px !important;
+  font-size: 1.1rem;
+}
+
+.dice-type-select {
+  width: 70px;
+  padding: 8px;
+  background: #444;
+  color: #e0e0e0;
+  border: 1px solid #555;
+  border-radius: 4px;
+  font-size: 1.1rem;
+}
+
+.modifier-input {
+  width: 60px !important;
+  text-align: center;
+  padding: 8px !important;
+  font-size: 1.1rem;
+}
+
+.extra-dice-label {
+  font-size: 0.8rem !important;
+  color: #666 !important;
+}
+
+.crit-section {
+  background: #3a2a2a;
+  border: 1px solid #ff6b6b;
+}
+
+.crit-section label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  margin-bottom: 0;
+}
+
+.crit-section input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+}
+
+.crit-label {
+  color: #ff6b6b;
+  font-weight: bold;
+}
+
+.damage-preview {
+  background: #222;
+  padding: 12px;
+  border-radius: 8px;
+  text-align: center;
+  font-size: 1.1rem;
+}
+
+.damage-preview span:first-child {
+  color: #888;
+}
+
+#damage-preview-text {
+  color: #4ecdc4;
+  font-weight: bold;
+  font-size: 1.2rem;
+}
+
+.modal-actions {
+  margin-top: 20px;
+}
+
+.modal-roll-btn {
+  width: 100%;
+  padding: 14px;
+  font-size: 1.1rem;
+  background: #ff6b6b;
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.3s, transform 0.2s;
+}
+
+.modal-roll-btn:hover {
+  background: #ff5252;
+  transform: scale(1.02);
+}
+
+.modal-roll-btn:active {
+  transform: scale(0.98);
+}
+
+.modal-roll-btn .fa-burst {
+  margin-right: 8px;
+}
+
+/* Damage Toast Styles */
+.damage-toast-body {
+  flex-direction: column;
+  gap: 4px;
+}
+
+.damage-dice-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.damage-dice-display .fa-burst {
+  font-size: 24px;
+  color: #ff6b6b;
+}
+
+.damage-rolls {
+  font-size: 1rem;
+  color: #888;
+  font-family: monospace;
+}
+
+.damage-dice-notation {
+  font-size: 0.8rem;
+  color: #666;
+  margin-top: 4px;
 }
 
 .calc {

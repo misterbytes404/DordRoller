@@ -4,9 +4,78 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dord Roller - Player Client</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link rel="stylesheet" href="/src/styles/main.css">
 </head>
 <body>
+  <!-- Floating Roll Result Toast -->
+  <div id="roll-toast" class="roll-toast"></div>
+
+  <!-- Damage Roll Modal -->
+  <div id="damage-modal" class="modal-overlay">
+    <div class="modal-content">
+      <button type="button" class="modal-close" id="damage-modal-close">&times;</button>
+      <h3 id="damage-modal-title">Roll Damage</h3>
+      
+      <div class="damage-modal-body">
+        <!-- Base Damage -->
+        <div class="damage-section">
+          <label>Base Damage:</label>
+          <div class="dice-input-group">
+            <input type="number" id="damage-dice-count" min="1" value="1" class="dice-count-input">
+            <span>d</span>
+            <select id="damage-dice-type" class="dice-type-select">
+              <option value="4">4</option>
+              <option value="6">6</option>
+              <option value="8" selected>8</option>
+              <option value="10">10</option>
+              <option value="12">12</option>
+            </select>
+            <span>+</span>
+            <input type="number" id="damage-modifier" value="0" class="modifier-input">
+          </div>
+        </div>
+
+        <!-- Additional Dice (Sneak Attack, Smite, etc.) -->
+        <div class="damage-section">
+          <label>Additional Dice:</label>
+          <div class="dice-input-group">
+            <input type="number" id="extra-dice-count" min="0" value="0" class="dice-count-input">
+            <span>d</span>
+            <select id="extra-dice-type" class="dice-type-select">
+              <option value="4">4</option>
+              <option value="6" selected>6</option>
+              <option value="8">8</option>
+              <option value="10">10</option>
+              <option value="12">12</option>
+            </select>
+            <span class="extra-dice-label">(Sneak Attack, Smite, etc.)</span>
+          </div>
+        </div>
+
+        <!-- Critical Hit Toggle -->
+        <div class="damage-section crit-section">
+          <label>
+            <input type="checkbox" id="damage-crit-toggle">
+            <span class="crit-label">Critical Hit! (Double Dice)</span>
+          </label>
+        </div>
+
+        <!-- Roll Preview -->
+        <div class="damage-preview">
+          <span>Rolling: </span>
+          <span id="damage-preview-text">1d8+0</span>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" id="damage-roll-btn" class="modal-roll-btn">
+          <i class="fa-solid fa-burst"></i> Roll Damage
+        </button>
+      </div>
+    </div>
+  </div>
+
   <div id="app">
     <header>
       <h1>🎲 Dord Roller - Player</h1>
@@ -107,7 +176,12 @@
                     </div>
                     <div class="form-group">
                       <label for="char-initiative">Initiative:</label>
-                      <span id="char-initiative" class="calc">+0</span>
+                      <div class="inline-roll-group">
+                        <span id="char-initiative" class="calc">+0</span>
+                        <button type="button" class="roll-btn combat-roll-btn" data-roll-type="initiative" title="Roll Initiative">
+                          <i class="fa-solid fa-dice-d20"></i>
+                        </button>
+                      </div>
                     </div>
                   </div>
                   <div class="form-row">
@@ -142,23 +216,76 @@
                     </div>
                   </div>
                   <h4>Weapons</h4>
-                  <div class="weapons-list">
-                    <div class="weapon-item">
-                      <input type="text" id="weapon-1-name" placeholder="Weapon Name">
-                      <input type="text" id="weapon-1-damage" placeholder="Damage (e.g., 1d8)">
-                      <input type="text" id="weapon-1-properties" placeholder="Properties">
-                    </div>
-                    <div class="weapon-item">
-                      <input type="text" id="weapon-2-name" placeholder="Weapon Name">
-                      <input type="text" id="weapon-2-damage" placeholder="Damage (e.g., 1d8)">
-                      <input type="text" id="weapon-2-properties" placeholder="Properties">
-                    </div>
-                    <div class="weapon-item">
-                      <input type="text" id="weapon-3-name" placeholder="Weapon Name">
-                      <input type="text" id="weapon-3-damage" placeholder="Damage (e.g., 1d8)">
-                      <input type="text" id="weapon-3-properties" placeholder="Properties">
-                    </div>
-                  </div>
+                  <table class="weapons-table">
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>Attack</th>
+                        <th>Damage</th>
+                        <th>Properties</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td><input type="text" id="weapon-1-name" placeholder="Weapon Name"></td>
+                        <td>
+                          <select id="weapon-1-ability">
+                            <option value="str">STR</option>
+                            <option value="dex">DEX</option>
+                          </select>
+                        </td>
+                        <td><input type="text" id="weapon-1-damage" placeholder="1d8+3"></td>
+                        <td><input type="text" id="weapon-1-properties" placeholder="Properties"></td>
+                        <td class="weapon-actions">
+                          <button type="button" class="roll-btn attack-btn" data-weapon="1" title="Roll Attack">
+                            <i class="fa-solid fa-dice-d20"></i> ATK
+                          </button>
+                          <button type="button" class="roll-btn damage-btn" data-weapon="1" title="Roll Damage">
+                            <i class="fa-solid fa-burst"></i> DMG
+                          </button>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td><input type="text" id="weapon-2-name" placeholder="Weapon Name"></td>
+                        <td>
+                          <select id="weapon-2-ability">
+                            <option value="str">STR</option>
+                            <option value="dex">DEX</option>
+                          </select>
+                        </td>
+                        <td><input type="text" id="weapon-2-damage" placeholder="1d8+3"></td>
+                        <td><input type="text" id="weapon-2-properties" placeholder="Properties"></td>
+                        <td class="weapon-actions">
+                          <button type="button" class="roll-btn attack-btn" data-weapon="2" title="Roll Attack">
+                            <i class="fa-solid fa-dice-d20"></i> ATK
+                          </button>
+                          <button type="button" class="roll-btn damage-btn" data-weapon="2" title="Roll Damage">
+                            <i class="fa-solid fa-burst"></i> DMG
+                          </button>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td><input type="text" id="weapon-3-name" placeholder="Weapon Name"></td>
+                        <td>
+                          <select id="weapon-3-ability">
+                            <option value="str">STR</option>
+                            <option value="dex">DEX</option>
+                          </select>
+                        </td>
+                        <td><input type="text" id="weapon-3-damage" placeholder="1d8+3"></td>
+                        <td><input type="text" id="weapon-3-properties" placeholder="Properties"></td>
+                        <td class="weapon-actions">
+                          <button type="button" class="roll-btn attack-btn" data-weapon="3" title="Roll Attack">
+                            <i class="fa-solid fa-dice-d20"></i> ATK
+                          </button>
+                          <button type="button" class="roll-btn damage-btn" data-weapon="3" title="Roll Damage">
+                            <i class="fa-solid fa-burst"></i> DMG
+                          </button>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
                 <div id="spell-rules-tab" class="combat-tab-pane">
                   <div class="form-row">
@@ -166,9 +293,9 @@
                       <label for="spellcasting-ability">Spellcasting Ability:</label>
                       <select id="spellcasting-ability">
                         <option value="">Select</option>
-                        <option>Intelligence</option>
-                        <option>Wisdom</option>
-                        <option>Charisma</option>
+                        <option value="Intelligence">Intelligence</option>
+                        <option value="Wisdom">Wisdom</option>
+                        <option value="Charisma">Charisma</option>
                       </select>
                     </div>
                     <div class="form-group">
@@ -177,7 +304,27 @@
                     </div>
                     <div class="form-group">
                       <label for="spell-attack-bonus">Spell Attack Bonus:</label>
-                      <input type="number" id="spell-attack-bonus" placeholder="+0">
+                      <div class="inline-roll-group">
+                        <input type="number" id="spell-attack-bonus" placeholder="+0">
+                        <button type="button" class="roll-btn combat-roll-btn" data-roll-type="spell-attack" title="Roll Spell Attack">
+                          <i class="fa-solid fa-dice-d20"></i>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="spell-damage-section">
+                    <h4>Spell Damage</h4>
+                    <div class="form-row">
+                      <div class="form-group">
+                        <label for="spell-damage-dice">Damage Dice:</label>
+                        <input type="text" id="spell-damage-dice" placeholder="e.g., 8d6">
+                      </div>
+                      <div class="form-group spell-damage-action">
+                        <label>&nbsp;</label>
+                        <button type="button" class="roll-btn damage-btn spell-damage-btn" data-roll-type="spell-damage" title="Roll Spell Damage">
+                          <i class="fa-solid fa-burst"></i> Roll Spell Damage
+                        </button>
+                      </div>
                     </div>
                   </div>
                   <h4>Spell Slots</h4>
@@ -254,6 +401,7 @@
                     <th>Modifier</th>
                     <th>Manual Mod</th>
                     <th>Total</th>
+                    <th>Roll</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -263,6 +411,7 @@
                     <td id="str-mod-calc" class="calc">+0</td>
                     <td><input type="number" id="str-manual-mod" placeholder="0"></td>
                     <td id="str-total" class="total">+0</td>
+                    <td><button type="button" class="roll-btn" data-roll-type="ability" data-ability="str" title="Roll Strength Check"><i class="fa-solid fa-dice-d20"></i></button></td>
                   </tr>
                   <tr>
                     <td>Dexterity</td>
@@ -270,6 +419,7 @@
                     <td id="dex-mod-calc" class="calc">+0</td>
                     <td><input type="number" id="dex-manual-mod" placeholder="0"></td>
                     <td id="dex-total" class="total">+0</td>
+                    <td><button type="button" class="roll-btn" data-roll-type="ability" data-ability="dex" title="Roll Dexterity Check"><i class="fa-solid fa-dice-d20"></i></button></td>
                   </tr>
                   <tr>
                     <td>Constitution</td>
@@ -277,6 +427,7 @@
                     <td id="con-mod-calc" class="calc">+0</td>
                     <td><input type="number" id="con-manual-mod" placeholder="0"></td>
                     <td id="con-total" class="total">+0</td>
+                    <td><button type="button" class="roll-btn" data-roll-type="ability" data-ability="con" title="Roll Constitution Check"><i class="fa-solid fa-dice-d20"></i></button></td>
                   </tr>
                   <tr>
                     <td>Intelligence</td>
@@ -284,6 +435,7 @@
                     <td id="int-mod-calc" class="calc">+0</td>
                     <td><input type="number" id="int-manual-mod" placeholder="0"></td>
                     <td id="int-total" class="total">+0</td>
+                    <td><button type="button" class="roll-btn" data-roll-type="ability" data-ability="int" title="Roll Intelligence Check"><i class="fa-solid fa-dice-d20"></i></button></td>
                   </tr>
                   <tr>
                     <td>Wisdom</td>
@@ -291,6 +443,7 @@
                     <td id="wis-mod-calc" class="calc">+0</td>
                     <td><input type="number" id="wis-manual-mod" placeholder="0"></td>
                     <td id="wis-total" class="total">+0</td>
+                    <td><button type="button" class="roll-btn" data-roll-type="ability" data-ability="wis" title="Roll Wisdom Check"><i class="fa-solid fa-dice-d20"></i></button></td>
                   </tr>
                   <tr>
                     <td>Charisma</td>
@@ -298,6 +451,7 @@
                     <td id="cha-mod-calc" class="calc">+0</td>
                     <td><input type="number" id="cha-manual-mod" placeholder="0"></td>
                     <td id="cha-total" class="total">+0</td>
+                    <td><button type="button" class="roll-btn" data-roll-type="ability" data-ability="cha" title="Roll Charisma Check"><i class="fa-solid fa-dice-d20"></i></button></td>
                   </tr>
                 </tbody>
               </table>
@@ -312,6 +466,7 @@
                     <th>Saving Throw</th>
                     <th>Proficient</th>
                     <th>Total</th>
+                    <th>Roll</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -319,31 +474,37 @@
                     <td>Strength</td>
                     <td><input type="checkbox" id="str-save-prof"></td>
                     <td id="str-save-total" class="total">+0</td>
+                    <td><button type="button" class="roll-btn" data-roll-type="save" data-ability="str" title="Roll Strength Save"><i class="fa-solid fa-dice-d20"></i></button></td>
                   </tr>
                   <tr>
                     <td>Dexterity</td>
                     <td><input type="checkbox" id="dex-save-prof"></td>
                     <td id="dex-save-total" class="total">+0</td>
+                    <td><button type="button" class="roll-btn" data-roll-type="save" data-ability="dex" title="Roll Dexterity Save"><i class="fa-solid fa-dice-d20"></i></button></td>
                   </tr>
                   <tr>
                     <td>Constitution</td>
                     <td><input type="checkbox" id="con-save-prof"></td>
                     <td id="con-save-total" class="total">+0</td>
+                    <td><button type="button" class="roll-btn" data-roll-type="save" data-ability="con" title="Roll Constitution Save"><i class="fa-solid fa-dice-d20"></i></button></td>
                   </tr>
                   <tr>
                     <td>Intelligence</td>
                     <td><input type="checkbox" id="int-save-prof"></td>
                     <td id="int-save-total" class="total">+0</td>
+                    <td><button type="button" class="roll-btn" data-roll-type="save" data-ability="int" title="Roll Intelligence Save"><i class="fa-solid fa-dice-d20"></i></button></td>
                   </tr>
                   <tr>
                     <td>Wisdom</td>
                     <td><input type="checkbox" id="wis-save-prof"></td>
                     <td id="wis-save-total" class="total">+0</td>
+                    <td><button type="button" class="roll-btn" data-roll-type="save" data-ability="wis" title="Roll Wisdom Save"><i class="fa-solid fa-dice-d20"></i></button></td>
                   </tr>
                   <tr>
                     <td>Charisma</td>
                     <td><input type="checkbox" id="cha-save-prof"></td>
                     <td id="cha-save-total" class="total">+0</td>
+                    <td><button type="button" class="roll-btn" data-roll-type="save" data-ability="cha" title="Roll Charisma Save"><i class="fa-solid fa-dice-d20"></i></button></td>
                   </tr>
                 </tbody>
               </table>
@@ -359,6 +520,7 @@
                     <th>Proficient</th>
                     <th>Specialized</th>
                     <th>Total</th>
+                    <th>Roll</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -367,108 +529,126 @@
                     <td><input type="checkbox" id="acrobatics-prof"></td>
                     <td><input type="checkbox" id="acrobatics-exp"></td>
                     <td id="acrobatics-total" class="total">+0</td>
+                    <td><button type="button" class="roll-btn" data-roll-type="skill" data-skill="acrobatics" title="Roll Acrobatics"><i class="fa-solid fa-dice-d20"></i></button></td>
                   </tr>
                   <tr>
                     <td>Animal Handling (Wis)</td>
                     <td><input type="checkbox" id="animal-handling-prof"></td>
                     <td><input type="checkbox" id="animal-handling-exp"></td>
                     <td id="animal-handling-total" class="total">+0</td>
+                    <td><button type="button" class="roll-btn" data-roll-type="skill" data-skill="animal-handling" title="Roll Animal Handling"><i class="fa-solid fa-dice-d20"></i></button></td>
                   </tr>
                   <tr>
                     <td>Arcana (Int)</td>
                     <td><input type="checkbox" id="arcana-prof"></td>
                     <td><input type="checkbox" id="arcana-exp"></td>
                     <td id="arcana-total" class="total">+0</td>
+                    <td><button type="button" class="roll-btn" data-roll-type="skill" data-skill="arcana" title="Roll Arcana"><i class="fa-solid fa-dice-d20"></i></button></td>
                   </tr>
                   <tr>
                     <td>Athletics (Str)</td>
                     <td><input type="checkbox" id="athletics-prof"></td>
                     <td><input type="checkbox" id="athletics-exp"></td>
                     <td id="athletics-total" class="total">+0</td>
+                    <td><button type="button" class="roll-btn" data-roll-type="skill" data-skill="athletics" title="Roll Athletics"><i class="fa-solid fa-dice-d20"></i></button></td>
                   </tr>
                   <tr>
                     <td>Deception (Cha)</td>
                     <td><input type="checkbox" id="deception-prof"></td>
                     <td><input type="checkbox" id="deception-exp"></td>
                     <td id="deception-total" class="total">+0</td>
+                    <td><button type="button" class="roll-btn" data-roll-type="skill" data-skill="deception" title="Roll Deception"><i class="fa-solid fa-dice-d20"></i></button></td>
                   </tr>
                   <tr>
                     <td>History (Int)</td>
                     <td><input type="checkbox" id="history-prof"></td>
                     <td><input type="checkbox" id="history-exp"></td>
                     <td id="history-total" class="total">+0</td>
+                    <td><button type="button" class="roll-btn" data-roll-type="skill" data-skill="history" title="Roll History"><i class="fa-solid fa-dice-d20"></i></button></td>
                   </tr>
                   <tr>
                     <td>Insight (Wis)</td>
                     <td><input type="checkbox" id="insight-prof"></td>
                     <td><input type="checkbox" id="insight-exp"></td>
                     <td id="insight-total" class="total">+0</td>
+                    <td><button type="button" class="roll-btn" data-roll-type="skill" data-skill="insight" title="Roll Insight"><i class="fa-solid fa-dice-d20"></i></button></td>
                   </tr>
                   <tr>
                     <td>Intimidation (Cha)</td>
                     <td><input type="checkbox" id="intimidation-prof"></td>
                     <td><input type="checkbox" id="intimidation-exp"></td>
                     <td id="intimidation-total" class="total">+0</td>
+                    <td><button type="button" class="roll-btn" data-roll-type="skill" data-skill="intimidation" title="Roll Intimidation"><i class="fa-solid fa-dice-d20"></i></button></td>
                   </tr>
                   <tr>
                     <td>Investigation (Int)</td>
                     <td><input type="checkbox" id="investigation-prof"></td>
                     <td><input type="checkbox" id="investigation-exp"></td>
                     <td id="investigation-total" class="total">+0</td>
+                    <td><button type="button" class="roll-btn" data-roll-type="skill" data-skill="investigation" title="Roll Investigation"><i class="fa-solid fa-dice-d20"></i></button></td>
                   </tr>
                   <tr>
                     <td>Medicine (Wis)</td>
                     <td><input type="checkbox" id="medicine-prof"></td>
                     <td><input type="checkbox" id="medicine-exp"></td>
                     <td id="medicine-total" class="total">+0</td>
+                    <td><button type="button" class="roll-btn" data-roll-type="skill" data-skill="medicine" title="Roll Medicine"><i class="fa-solid fa-dice-d20"></i></button></td>
                   </tr>
                   <tr>
                     <td>Nature (Int)</td>
                     <td><input type="checkbox" id="nature-prof"></td>
                     <td><input type="checkbox" id="nature-exp"></td>
                     <td id="nature-total" class="total">+0</td>
+                    <td><button type="button" class="roll-btn" data-roll-type="skill" data-skill="nature" title="Roll Nature"><i class="fa-solid fa-dice-d20"></i></button></td>
                   </tr>
                   <tr>
                     <td>Perception (Wis)</td>
                     <td><input type="checkbox" id="perception-prof"></td>
                     <td><input type="checkbox" id="perception-exp"></td>
                     <td id="perception-total" class="total">+0</td>
+                    <td><button type="button" class="roll-btn" data-roll-type="skill" data-skill="perception" title="Roll Perception"><i class="fa-solid fa-dice-d20"></i></button></td>
                   </tr>
                   <tr>
                     <td>Performance (Cha)</td>
                     <td><input type="checkbox" id="performance-prof"></td>
                     <td><input type="checkbox" id="performance-exp"></td>
                     <td id="performance-total" class="total">+0</td>
+                    <td><button type="button" class="roll-btn" data-roll-type="skill" data-skill="performance" title="Roll Performance"><i class="fa-solid fa-dice-d20"></i></button></td>
                   </tr>
                   <tr>
                     <td>Persuasion (Cha)</td>
                     <td><input type="checkbox" id="persuasion-prof"></td>
                     <td><input type="checkbox" id="persuasion-exp"></td>
                     <td id="persuasion-total" class="total">+0</td>
+                    <td><button type="button" class="roll-btn" data-roll-type="skill" data-skill="persuasion" title="Roll Persuasion"><i class="fa-solid fa-dice-d20"></i></button></td>
                   </tr>
                   <tr>
                     <td>Religion (Int)</td>
                     <td><input type="checkbox" id="religion-prof"></td>
                     <td><input type="checkbox" id="religion-exp"></td>
                     <td id="religion-total" class="total">+0</td>
+                    <td><button type="button" class="roll-btn" data-roll-type="skill" data-skill="religion" title="Roll Religion"><i class="fa-solid fa-dice-d20"></i></button></td>
                   </tr>
                   <tr>
                     <td>Sleight of Hand (Dex)</td>
                     <td><input type="checkbox" id="sleight-of-hand-prof"></td>
                     <td><input type="checkbox" id="sleight-of-hand-exp"></td>
                     <td id="sleight-of-hand-total" class="total">+0</td>
+                    <td><button type="button" class="roll-btn" data-roll-type="skill" data-skill="sleight-of-hand" title="Roll Sleight of Hand"><i class="fa-solid fa-dice-d20"></i></button></td>
                   </tr>
                   <tr>
                     <td>Stealth (Dex)</td>
                     <td><input type="checkbox" id="stealth-prof"></td>
                     <td><input type="checkbox" id="stealth-exp"></td>
                     <td id="stealth-total" class="total">+0</td>
+                    <td><button type="button" class="roll-btn" data-roll-type="skill" data-skill="stealth" title="Roll Stealth"><i class="fa-solid fa-dice-d20"></i></button></td>
                   </tr>
                   <tr>
                     <td>Survival (Wis)</td>
                     <td><input type="checkbox" id="survival-prof"></td>
                     <td><input type="checkbox" id="survival-exp"></td>
                     <td id="survival-total" class="total">+0</td>
+                    <td><button type="button" class="roll-btn" data-roll-type="skill" data-skill="survival" title="Roll Survival"><i class="fa-solid fa-dice-d20"></i></button></td>
                   </tr>
                 </tbody>
               </table>
