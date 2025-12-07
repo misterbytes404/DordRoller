@@ -2,6 +2,7 @@ import { io } from 'socket.io-client';
 import { DiceRoller } from './modules/diceRoller.js';
 import { MonsterTracker } from './modules/monsterTracker.js';
 import { PlayerTracker } from './modules/playerTracker.js';
+import { RollLog } from './modules/rollLog.js';
 
 // Initialize socket connection
 const socket = io('http://localhost:3000');
@@ -28,7 +29,7 @@ document.getElementById('create-room-btn').addEventListener('click', async () =>
   try {
     const response = await fetch('http://localhost:3000/create-room', { method: 'POST' });
     const data = await response.json();
-    socket.emit('join_room', data.code);
+    socket.emit('gm_join_room', data.code);
     currentRoom = data.code;
     showRoomInfo(data.code);
   } catch (error) {
@@ -49,7 +50,7 @@ document.getElementById('join-room-btn').addEventListener('click', async () => {
       body: JSON.stringify({ code: roomCode })
     });
     if (response.ok) {
-      socket.emit('join_room', roomCode);
+      socket.emit('gm_join_room', roomCode);
       currentRoom = roomCode;
     } else {
       alert('Invalid room code');
@@ -80,4 +81,5 @@ socket.on('error', (data) => {
 // Initialize modules
 const diceRoller = new DiceRoller(socket, () => currentRoom);
 const monsterTracker = new MonsterTracker();
-const playerTracker = new PlayerTracker();
+const playerTracker = new PlayerTracker(socket);
+const rollLog = new RollLog(socket);

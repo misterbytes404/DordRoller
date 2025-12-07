@@ -20,7 +20,7 @@
       <div class="damage-modal-body">
         <!-- Base Damage -->
         <div class="damage-section">
-          <label>Base Damage:</label>
+          <label>Base Damage Dice:</label>
           <div class="dice-input-group">
             <input type="number" id="damage-dice-count" min="1" value="1" class="dice-count-input">
             <span>d</span>
@@ -31,8 +31,25 @@
               <option value="10">10</option>
               <option value="12">12</option>
             </select>
-            <span>+</span>
-            <input type="number" id="damage-modifier" value="0" class="modifier-input">
+          </div>
+        </div>
+
+        <!-- Ability Modifier (Auto-calculated) -->
+        <div class="damage-section ability-mod-section">
+          <label>Ability Modifier:</label>
+          <div class="ability-mod-display">
+            <span id="damage-ability-name">STR</span>
+            <span id="damage-ability-mod" class="ability-mod-value">+0</span>
+            <span class="auto-label">(auto)</span>
+          </div>
+        </div>
+
+        <!-- Bonus Modifier (Magic items, GM discretion, etc.) -->
+        <div class="damage-section">
+          <label>Bonus Modifier:</label>
+          <div class="dice-input-group">
+            <input type="number" id="damage-bonus" value="0" class="modifier-input">
+            <span class="extra-dice-label">(magic items, GM discretion, etc.)</span>
           </div>
         </div>
 
@@ -78,7 +95,7 @@
 
   <div id="app">
     <header>
-      <h1>🎲 Dord Roller - Player</h1>
+      <h1><i class="fa-solid fa-dice-d20"></i> Dord Roller - Player</h1>
       <div id="connection-status">Disconnected</div>
     </header>
 
@@ -100,7 +117,20 @@
       </section>
 
       <section id="character-sheet" style="display: none;">
-        <h2>Character Sheet</h2>
+        <div class="sheet-header">
+          <h2>Character Sheet</h2>
+          <div class="sheet-actions">
+            <button type="button" id="export-sheet-btn" class="sheet-action-btn export-btn" title="Download character sheet as JSON file">
+              <i class="fa-solid fa-download"></i> Export
+            </button>
+            <button type="button" id="import-sheet-btn" class="sheet-action-btn import-btn" title="Load character sheet from JSON file">
+              <i class="fa-solid fa-upload"></i> Import
+            </button>
+            <button type="button" id="save-sheet-btn" class="save-sheet-btn">
+              <i class="fa-solid fa-floppy-disk"></i> Save & Sync
+            </button>
+          </div>
+        </div>
         <form id="char-form">
         <div class="sheet-layout">
           <div class="left-column">
@@ -160,6 +190,26 @@
               </div>
             </div>
 
+            <!-- Advantage/Disadvantage Toggle -->
+            <div class="card adv-disadv-card">
+              <h3>Roll Mode</h3>
+              <div class="roll-mode-toggle">
+                <button type="button" class="roll-mode-btn" data-mode="disadvantage" title="Disadvantage - Roll 2d20, take lowest">
+                  <i class="fa-solid fa-arrow-down"></i>
+                  <span>Disadvantage</span>
+                </button>
+                <button type="button" class="roll-mode-btn active" data-mode="normal" title="Normal - Roll 1d20">
+                  <i class="fa-solid fa-dice-d20"></i>
+                  <span>Normal</span>
+                </button>
+                <button type="button" class="roll-mode-btn" data-mode="advantage" title="Advantage - Roll 2d20, take highest">
+                  <i class="fa-solid fa-arrow-up"></i>
+                  <span>Advantage</span>
+                </button>
+              </div>
+              <p class="roll-mode-description" id="roll-mode-description">Rolling normally (1d20)</p>
+            </div>
+
             <!-- Combat Stats -->
             <div class="card">
               <h3>Combat Stats</h3>
@@ -204,6 +254,11 @@
                       <input type="number" id="char-max-hp" min="1" required>
                     </div>
                   </div>
+                  <div class="hp-bar-container">
+                    <progress id="hp-bar" value="0" max="100"></progress>
+                    <input type="range" id="hp-slider" min="0" max="100" step="1" value="0">
+                    <span id="hp-display" class="hp-display">0 / 0</span>
+                  </div>
                   <h4>Armor</h4>
                   <div class="form-row">
                     <div class="form-group">
@@ -221,6 +276,7 @@
                       <tr>
                         <th>Name</th>
                         <th>Attack</th>
+                        <th>Bonus</th>
                         <th>Damage</th>
                         <th>Properties</th>
                         <th>Actions</th>
@@ -235,6 +291,7 @@
                             <option value="dex">DEX</option>
                           </select>
                         </td>
+                        <td><input type="number" id="weapon-1-bonus" placeholder="0" class="weapon-bonus-input" title="Magic weapon bonus (e.g., +1, +2)"></td>
                         <td><input type="text" id="weapon-1-damage" placeholder="1d8+3"></td>
                         <td><input type="text" id="weapon-1-properties" placeholder="Properties"></td>
                         <td class="weapon-actions">
@@ -254,6 +311,7 @@
                             <option value="dex">DEX</option>
                           </select>
                         </td>
+                        <td><input type="number" id="weapon-2-bonus" placeholder="0" class="weapon-bonus-input" title="Magic weapon bonus (e.g., +1, +2)"></td>
                         <td><input type="text" id="weapon-2-damage" placeholder="1d8+3"></td>
                         <td><input type="text" id="weapon-2-properties" placeholder="Properties"></td>
                         <td class="weapon-actions">
@@ -273,6 +331,7 @@
                             <option value="dex">DEX</option>
                           </select>
                         </td>
+                        <td><input type="number" id="weapon-3-bonus" placeholder="0" class="weapon-bonus-input" title="Magic weapon bonus (e.g., +1, +2)"></td>
                         <td><input type="text" id="weapon-3-damage" placeholder="1d8+3"></td>
                         <td><input type="text" id="weapon-3-properties" placeholder="Properties"></td>
                         <td class="weapon-actions">
@@ -508,6 +567,37 @@
                   </tr>
                 </tbody>
               </table>
+
+              <!-- Death Saves -->
+              <div class="death-saves-section">
+                <h4><i class="fa-solid fa-skull"></i> Death Saves</h4>
+                <div class="death-saves-tracker">
+                  <div class="death-saves-row successes">
+                    <span class="death-saves-label">Successes</span>
+                    <div class="death-saves-checkboxes">
+                      <input type="checkbox" class="death-save-checkbox success" id="death-success-1" data-type="success" data-index="1">
+                      <input type="checkbox" class="death-save-checkbox success" id="death-success-2" data-type="success" data-index="2">
+                      <input type="checkbox" class="death-save-checkbox success" id="death-success-3" data-type="success" data-index="3">
+                    </div>
+                  </div>
+                  <div class="death-saves-row failures">
+                    <span class="death-saves-label">Failures</span>
+                    <div class="death-saves-checkboxes">
+                      <input type="checkbox" class="death-save-checkbox failure" id="death-failure-1" data-type="failure" data-index="1">
+                      <input type="checkbox" class="death-save-checkbox failure" id="death-failure-2" data-type="failure" data-index="2">
+                      <input type="checkbox" class="death-save-checkbox failure" id="death-failure-3" data-type="failure" data-index="3">
+                    </div>
+                  </div>
+                  <div class="death-saves-actions">
+                    <button type="button" class="roll-btn death-save-roll" id="roll-death-save" title="Roll Death Save">
+                      <i class="fa-solid fa-dice-d20"></i> Roll Death Save
+                    </button>
+                    <button type="button" class="reset-btn" id="reset-death-saves" title="Reset Death Saves">
+                      <i class="fa-solid fa-rotate-left"></i> Reset
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <!-- Skills -->
@@ -861,6 +951,30 @@
       </section>
     </main>
   </div>
+
+  <!-- Export Confirmation Modal -->
+  <div id="export-modal" class="modal-overlay">
+    <div class="modal-content export-modal-content">
+      <button type="button" class="modal-close" id="export-modal-close">&times;</button>
+      <h3><i class="fa-solid fa-download"></i> Export Character Sheet</h3>
+      <div class="export-modal-body">
+        <div class="export-warning">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          <p><strong>Before exporting:</strong> Make sure your character sheet is current and all fields are up to date. The exported file will contain exactly what's shown on screen.</p>
+        </div>
+        <p class="export-info">Your character will be saved as a JSON file that you can import later to restore your sheet.</p>
+        <div class="export-actions">
+          <button type="button" id="confirm-export-btn" class="confirm-export-btn">
+            <i class="fa-solid fa-download"></i> Download Character Sheet
+          </button>
+          <button type="button" id="cancel-export-btn" class="cancel-export-btn">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Import File Input (hidden) -->
+  <input type="file" id="import-file-input" accept=".json" style="display: none;">
 
   <script type="module" src="/src/main.js"></script>
 </body>

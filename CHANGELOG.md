@@ -10,6 +10,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **GM Roll Log Widget** — Real-time feed of player rolls in GM client
+  - Scrollable log showing player name, roll type, result, and timestamp
+  - XSS-safe DOM rendering (Snyk security compliant)
+  - Clear log button
+  - Side-by-side layout with dice roller
+- **HP Slider/Progress Bar** — Visual HP tracking in player client
+  - Gradient color bar (green → yellow → red based on HP %)
+  - Interactive slider for quick HP adjustment
+  - Syncs with HP input fields
+- **Magic Weapon Bonus** — "+X" bonus field in weapons table
+  - Supports +1/+2/+3 magic weapons
+  - Auto-adds to attack rolls
+- **Live HP/AC Sync** — Automatic server sync on HP/AC changes
+  - 300ms debounced sync to prevent spam
+- **Character Sheet Export/Import** (Partial)
+  - Export button with confirmation modal
+  - Import from JSON file
+  - Warning message before export
+- **localStorage Persistence** — Character sheet saves locally
+  - Auto-loads on page refresh
+  - `populateFormFromCharacterSheet()` restores form state
 - **Player Quick Roll Buttons** — d20 icons in character sheet for one-click rolls
   - Roll buttons for all 6 ability checks
   - Roll buttons for all 6 saving throws
@@ -43,9 +64,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Weapons section converted from simple inputs to full table
 - Roll buttons use light text color (#e0e0e0) matching dark theme
+- GM client layout redesigned — dice roller and roll log side-by-side
+
+### Known Issues
+- **Save & Sync button not functional** — Click handler may not be attaching properly
+- **Export download button not functional** — Modal shows but download doesn't trigger
+- Event listeners for sheet buttons need debugging
 
 ### In Progress
-- GM client roll feed display
+- Debugging Save & Sync and Export functionality
+- Full character sheet persistence
+
+### Planned
+- **PostgreSQL Database Integration** (Railway deployment)
+  - Schema: players, character_sheets (JSONB), rooms, room_players
+  - REST API: `/api/players`, `/api/sheets`, `/api/rooms`
+  - Packages: `pg`, `dotenv`
+  - Replace localStorage with server-side persistence
 
 ---
 

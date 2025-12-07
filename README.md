@@ -84,8 +84,12 @@ Full **D&D 5e character sheet** with automatic calculations:
 
 ### 📋 To Do
 
+- [ ] 🐘 **PostgreSQL Database** — Character sheet persistence (Railway-ready)
+  - Players table, character_sheets table with JSONB for complex data
+  - Rooms & room_players tables for session management
+  - REST API endpoints (CRUD for sheets)
+  - Save & Sync button integration
 - [ ] 📺 OBS Monster Display — Show monster name & HP bar on stream
-- [ ] 💾 Database Persistence — SQLite for character sheets & game state
 - [ ] 🔐 Twitch OAuth — Authentication for GMs and players
 - [ ] 🎲 Player Dice Rolling — Full integration with GM panel & OBS
 - [ ] 🎨 UI Overhaul — Visual polish across all clients
@@ -104,9 +108,12 @@ Full **D&D 5e character sheet** with automatic calculations:
 
 ## 🐛 Known Issues
 
-| Issue | Description |
-|-------|-------------|
-| Monster Type Parsing | Some bestiary entries don't parse monster types correctly |
+| Issue | Status | Description |
+|-------|--------|-------------|
+| **Save & Sync Button** | 🔴 Broken | Button click handler not functioning — character sheet doesn't save on click |
+| **Export Download** | 🔴 Broken | Export modal opens but download button doesn't trigger file save |
+| **Import Character** | ⚠️ Untested | Import functionality implemented but not fully tested |
+| Monster Type Parsing | 🟡 Partial | Some bestiary entries don't parse monster types correctly |
 
 ---
 

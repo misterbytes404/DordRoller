@@ -4,12 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dord Roller - GM Control Panel</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link rel="stylesheet" href="/src/styles/main.css">
 </head>
 <body>
   <div id="app">
     <header>
-      <h1>🎲 Dord Roller - GM Panel</h1>
+      <h1><i class="fa-solid fa-dice-d20"></i> Dord Roller - GM Panel</h1>
       <div id="connection-status">Disconnected</div>
     </header>
 
@@ -28,8 +29,30 @@
         </div>
       </section>
 
-      <section id="dice-roller">
-        <h2>Dice Roller</h2>
+      <div class="dice-roll-row">
+        <section id="dice-roller">
+          <h2>Dice Roller</h2>
+          
+          <!-- Roll Mode Toggle -->
+        <div class="roll-mode-section">
+          <label>Roll Mode:</label>
+          <div class="roll-mode-toggle">
+            <button type="button" class="roll-mode-btn" data-mode="disadvantage" title="Disadvantage - Roll 2d20, take lowest">
+              <i class="fa-solid fa-arrow-down"></i>
+              <span>Disadvantage</span>
+            </button>
+            <button type="button" class="roll-mode-btn active" data-mode="normal" title="Normal - Roll as specified">
+              <i class="fa-solid fa-dice-d20"></i>
+              <span>Normal</span>
+            </button>
+            <button type="button" class="roll-mode-btn" data-mode="advantage" title="Advantage - Roll 2d20, take highest">
+              <i class="fa-solid fa-arrow-up"></i>
+              <span>Advantage</span>
+            </button>
+          </div>
+          <p class="roll-mode-description" id="roll-mode-description">Rolling normally</p>
+        </div>
+
         <div class="dice-fields">
           <div class="field-group">
             <label for="dice-quantity">Quantity:</label><br>
@@ -89,15 +112,26 @@
           </div>
         </div>
         
-        <!-- New Button Group -->
-        <div class="button-group" style="margin-top: 15px; display: flex; gap: 10px;">
-          <button id="roll-btn">Roll Normal</button>
-          <button id="adv-btn" style="background-color: #4CAF50; color: white;">Roll Advantage (2d20)</button>
-          <button id="disadv-btn" style="background-color: #f44336; color: white;">Roll Disadvantage (2d20)</button>
+        <!-- Single Roll Button -->
+        <div class="roll-action" style="margin-top: 15px;">
+          <button id="roll-btn"><i class="fa-solid fa-dice-d20"></i> Roll Dice</button>
         </div>
         
         <div id="feedback"></div>
       </section>
+
+      <section id="roll-log">
+        <div class="roll-log-header">
+          <h2><i class="fa-solid fa-scroll"></i> Roll Log</h2>
+          <button type="button" id="clear-roll-log-btn" class="clear-log-btn">
+            <i class="fa-solid fa-trash"></i> Clear
+          </button>
+        </div>
+        <div id="roll-log-entries" class="roll-log-entries">
+          <div class="no-rolls">No rolls yet...</div>
+        </div>
+      </section>
+      </div>
 
       <section id="monster-tracker">
         <h2>Monster Tracker</h2>
@@ -195,12 +229,46 @@
       </section>
 
       <section id="player-tracker">
-        <h2>Player Tracker (MVP 2)</h2>
-        <div id="player-list">
-          <!-- Player cards will be dynamically added here -->
+        <div class="tracker-header">
+          <h2><i class="fa-solid fa-users"></i> Player Tracker</h2>
+          <button type="button" id="refresh-players-btn" class="refresh-players-btn">
+            <i class="fa-solid fa-arrows-rotate"></i> Refresh All
+          </button>
         </div>
-        <button id="add-player-btn">+ Add Player</button>
+        <div id="player-list-container">
+          <table id="player-table">
+            <thead>
+              <tr>
+                <th>Status</th>
+                <th>Character</th>
+                <th>Player</th>
+                <th>AC</th>
+                <th>HP</th>
+                <th>Summary</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="player-list-body">
+              <tr id="no-players-row">
+                <td colspan="7" class="no-players">No players connected. Share your room code!</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </section>
+
+      <!-- Character Sheet Modal -->
+      <div id="character-sheet-modal" class="modal hidden">
+        <div class="modal-content character-sheet-modal-content">
+          <div class="modal-header">
+            <h3 id="modal-character-name">Character Sheet</h3>
+            <button class="modal-close" id="sheet-modal-close">&times;</button>
+          </div>
+          <div class="modal-body" id="sheet-modal-body">
+            <!-- Character sheet content will be populated dynamically -->
+          </div>
+        </div>
+      </div>
     </main>
   </div>
 

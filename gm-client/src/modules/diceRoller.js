@@ -4,29 +4,64 @@ export class DiceRoller {
   constructor(socket, getRoomCode) {
     this.socket = socket;
     this.getRoomCode = getRoomCode;
+    this.currentRollMode = 'normal'; // 'normal', 'advantage', 'disadvantage'
     this.init();
   }
 
   init() {
-    // Normal Roll Button
+    // Roll Mode Toggle Buttons
+    document.querySelectorAll('.roll-mode-btn').forEach(btn => {
+      btn.addEventListener('click', () => this.setRollMode(btn.dataset.mode));
+    });
+
+    // Single Roll Button
     const rollBtn = document.getElementById('roll-btn');
-    rollBtn.addEventListener('click', () => this.handleRoll('normal'));  // Normal roll
-
-    // Advantage Roll Button
-    const advBtn = document.getElementById('adv-btn');
-    advBtn.addEventListener('click', () => this.handleRoll('advantage'));  // Advantage roll
-
-    // Disadvantage Roll Button (New)
-    const disadvBtn = document.getElementById('disadv-btn');
-    disadvBtn.addEventListener('click', () => this.handleRoll('disadvantage'));  // Disadvantage roll
+    rollBtn.addEventListener('click', () => this.handleRoll());
   }
 
-  handleRoll(rollType) {
-    // Determine settings based on roll type
-    const isSpecial = rollType === 'advantage' || rollType === 'disadvantage';
-    const quantity = isSpecial ? 1 : (Number(document.getElementById('dice-quantity').value) || 1);
-    const diceType = isSpecial ? 'd20' : document.getElementById('dice-type').value;
-    const label = document.getElementById('roll-label').value || (rollType === 'advantage' ? 'Advantage Roll' : rollType === 'disadvantage' ? 'Disadvantage Roll' : 'GM Roll');
+  setRollMode(mode) {
+    this.currentRollMode = mode;
+    
+    // Update button states
+    document.querySelectorAll('.roll-mode-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.mode === mode);
+    });
+    
+    // Update description
+    const descEl = document.getElementById('roll-mode-description');
+    const descriptions = {
+      'normal': 'Rolling normally',
+      'advantage': 'Rolling with ADVANTAGE (2d20, keep highest)',
+      'disadvantage': 'Rolling with DISADVANTAGE (2d20, keep lowest)'
+    };
+    descEl.textContent = descriptions[mode];
+    
+    // Update roll button appearance based on mode
+    const rollBtn = document.getElementById('roll-btn');
+    rollBtn.className = ''; // Reset classes
+    if (mode === 'advantage') {
+      rollBtn.style.background = '#22c55e';
+      rollBtn.style.color = '#1a1a1a';
+    } else if (mode === 'disadvantage') {
+      rollBtn.style.background = '#c41e3a';
+      rollBtn.style.color = '#fff';
+    } else {
+      rollBtn.style.background = '';
+      rollBtn.style.color = '';
+    }
+  }
+
+  handleRoll() {
+    const rollType = this.currentRollMode;
+    const isAdvDisadv = rollType === 'advantage' || rollType === 'disadvantage';
+    
+    // For adv/disadv on d20, force 2d20; otherwise use selected dice
+    const diceType = document.getElementById('dice-type').value;
+    const isD20Roll = diceType === 'd20';
+    const useAdvDisadv = isAdvDisadv && isD20Roll;
+    
+    const quantity = useAdvDisadv ? 1 : (Number(document.getElementById('dice-quantity').value) || 1);
+    const label = document.getElementById('roll-label').value || 'GM Roll';
     const roomCode = this.getRoomCode();
     const modifier = Number(document.getElementById('roll-modifier').value) || 0;
 
@@ -38,20 +73,14 @@ export class DiceRoller {
     let individualRolls = [];
     let totalRaw = 0;
 
-    if (rollType === 'advantage') {
-      // Roll 2 d20s, keep highest
+    if (useAdvDisadv) {
+      // Roll 2d20 for advantage/disadvantage
       const roll1 = this.rollDice('d20');
       const roll2 = this.rollDice('d20');
-      totalRaw = Math.max(roll1, roll2);
-      individualRolls = [roll1, roll2];
-    } else if (rollType === 'disadvantage') {
-      // Roll 2 d20s, keep lowest
-      const roll1 = this.rollDice('d20');
-      const roll2 = this.rollDice('d20');
-      totalRaw = Math.min(roll1, roll2);
+      totalRaw = rollType === 'advantage' ? Math.max(roll1, roll2) : Math.min(roll1, roll2);
       individualRolls = [roll1, roll2];
     } else {
-      // Normal roll
+      // Normal roll (or non-d20 with adv/disadv selected - just roll normally)
       for (let i = 0; i < quantity; i++) {
         const roll = this.rollDice(diceType);
         individualRolls.push(roll);
@@ -64,14 +93,15 @@ export class DiceRoller {
     const rollData = {
       roomCode,
       roller: 'GM',
-      diceType,
-      quantity: isSpecial ? 2 : quantity,
+      diceType: useAdvDisadv ? 'd20' : diceType,
+      quantity: useAdvDisadv ? 2 : quantity,
       result: finalResult,
       label,
       modifier,
       rawResult: totalRaw,
       individualRolls,
-      rollType,
+      rollType: useAdvDisadv ? rollType : 'normal',
+      rollMode: rollType,
       timestamp: Date.now()
     };
 
@@ -79,9 +109,34 @@ export class DiceRoller {
     console.log('Roll sent:', rollData);
 
     // UI Feedback
+    this.showFeedback(rollData, useAdvDisadv, diceType, quantity);
+  }
+
+  showFeedback(rollData, useAdvDisadv, diceType, quantity) {
     const feedback = document.getElementById('feedback');
-    const typeText = rollType === 'advantage' ? 'Advantage (2d20 keep highest)' : rollType === 'disadvantage' ? 'Disadvantage (2d20 keep lowest)' : `${quantity}x ${diceType}`;
-    feedback.textContent = `Rolled ${typeText}: [${individualRolls.join(', ')}] + ${modifier} = ${finalResult} (${label})`;
+    const { individualRolls, modifier, result, label, rollType } = rollData;
+    
+    if (useAdvDisadv) {
+      const [roll1, roll2] = individualRolls;
+      const kept = rollType === 'advantage' ? Math.max(roll1, roll2) : Math.min(roll1, roll2);
+      const dropped = rollType === 'advantage' ? Math.min(roll1, roll2) : Math.max(roll1, roll2);
+      const modeLabel = rollType === 'advantage' ? 'ADVANTAGE' : 'DISADVANTAGE';
+      const arrow = rollType === 'advantage' ? '↑' : '↓';
+      
+      feedback.innerHTML = `
+        <span style="color: ${rollType === 'advantage' ? '#22c55e' : '#c41e3a'}; font-weight: bold;">
+          ${arrow} ${modeLabel}
+        </span>: 
+        [<strong>${kept}</strong> / <span style="text-decoration: line-through; opacity: 0.5;">${dropped}</span>] 
+        + ${modifier} = <strong>${result}</strong> 
+        <span style="color: #888;">(${label})</span>
+      `;
+    } else {
+      feedback.innerHTML = `
+        Rolled ${quantity}x ${diceType}: [${individualRolls.join(', ')}] + ${modifier} = <strong>${result}</strong> 
+        <span style="color: #888;">(${label})</span>
+      `;
+    }
   }
 
   rollDice(diceType) {

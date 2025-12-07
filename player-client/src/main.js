@@ -7,7 +7,10 @@ const socket = io('http://localhost:3000');
 let playerName = '';
 let currentRoom = null;
 let currentRollRequest = null;
-let characterSheet = {
+let currentRollMode = 'normal'; // 'normal', 'advantage', 'disadvantage'
+
+// Default character sheet structure
+const defaultCharacterSheet = {
   name: '',
   class: '',
   level: 1,
@@ -70,9 +73,9 @@ let characterSheet = {
     ac: 0
   },
   weapons: [
-    { name: '', damage: '', properties: '', ability: 'str' },
-    { name: '', damage: '', properties: '', ability: 'str' },
-    { name: '', damage: '', properties: '', ability: 'str' }
+    { name: '', damage: '', properties: '', ability: 'str', bonus: 0 },
+    { name: '', damage: '', properties: '', ability: 'str', bonus: 0 },
+    { name: '', damage: '', properties: '', ability: 'str', bonus: 0 }
   ],
   equipment: '',
   features: '',
@@ -106,6 +109,111 @@ let characterSheet = {
   ]
 };
 
+// Load character sheet from localStorage or use defaults
+let characterSheet;
+try {
+  const saved = localStorage.getItem('dordroller_character');
+  if (saved) {
+    characterSheet = { ...defaultCharacterSheet, ...JSON.parse(saved) };
+    console.log('Loaded character from localStorage:', characterSheet.name);
+  } else {
+    characterSheet = { ...defaultCharacterSheet };
+  }
+} catch (e) {
+  console.error('Failed to load character from localStorage:', e);
+  characterSheet = { ...defaultCharacterSheet };
+}
+
+// Populate form fields from characterSheet object
+function populateFormFromCharacterSheet() {
+  try {
+    // Helper to safely set input value
+    const setInputValue = (id, value, fallback = '') => {
+      const el = document.getElementById(id);
+      if (el) el.value = value ?? fallback;
+    };
+    
+    // Helper to safely set checkbox
+    const setCheckbox = (id, checked) => {
+      const el = document.getElementById(id);
+      if (el) el.checked = checked ?? false;
+    };
+    
+    // Basic info
+    setInputValue('char-name', characterSheet.name, '');
+    setInputValue('char-class', characterSheet.class, '');
+    setInputValue('char-level', characterSheet.level, 1);
+    setInputValue('char-background', characterSheet.background, '');
+    setInputValue('char-race', characterSheet.race, '');
+    setInputValue('char-alignment', characterSheet.alignment, '');
+    setInputValue('char-xp', characterSheet.xp, 0);
+    setInputValue('char-player-name', characterSheet.playerName, '');
+    
+    // HP and combat stats
+    setInputValue('char-hp', characterSheet.hp, 0);
+    setInputValue('char-max-hp', characterSheet.maxHp, 0);
+    setInputValue('char-hit-dice', characterSheet.hitDice, '');
+    setInputValue('char-ac', characterSheet.ac, 10);
+    setInputValue('char-speed', characterSheet.speed, '');
+    
+    // Abilities
+    const abilities = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
+    abilities.forEach(ability => {
+      setInputValue(`${ability}-score`, characterSheet.abilities?.[ability], 10);
+      setInputValue(`${ability}-manual-mod`, characterSheet.manualMods?.[ability], 0);
+    });
+    
+    // Saving throw proficiencies
+    abilities.forEach(ability => {
+      setCheckbox(`${ability}-save-prof`, characterSheet.savingThrows?.[ability]);
+    });
+    
+    // Skills
+    const skillNames = ['acrobatics', 'animal-handling', 'arcana', 'athletics', 'deception', 'history', 
+                        'insight', 'intimidation', 'investigation', 'medicine', 'nature', 'perception',
+                        'performance', 'persuasion', 'religion', 'sleight-of-hand', 'stealth', 'survival'];
+    skillNames.forEach(skill => {
+      setCheckbox(`${skill}-prof`, characterSheet.skills?.[skill]?.prof);
+      setCheckbox(`${skill}-exp`, characterSheet.skills?.[skill]?.expertise);
+    });
+    
+    // Weapons
+    if (characterSheet.weapons) {
+      for (let i = 0; i < characterSheet.weapons.length && i < 3; i++) {
+        const weapon = characterSheet.weapons[i] || {};
+        setInputValue(`weapon-${i + 1}-name`, weapon.name, '');
+        setInputValue(`weapon-${i + 1}-damage`, weapon.damage, '');
+        setInputValue(`weapon-${i + 1}-properties`, weapon.properties, '');
+        setInputValue(`weapon-${i + 1}-ability`, weapon.ability, 'str');
+        setInputValue(`weapon-${i + 1}-bonus`, weapon.bonus, 0);
+      }
+    }
+    
+    // Equipment and features
+    setInputValue('char-equipment', characterSheet.equipment, '');
+    setInputValue('char-features', characterSheet.features, '');
+    setInputValue('char-spells', characterSheet.spells, '');
+    
+    // Spellcasting
+    setInputValue('spellcasting-ability', characterSheet.spellcastingAbility, '');
+    setInputValue('spell-save-dc', characterSheet.spellSaveDC, 0);
+    setInputValue('spell-attack-bonus', characterSheet.spellAttackBonus, 0);
+    
+    // Spell slots
+    if (characterSheet.spellSlots) {
+      for (let i = 0; i < characterSheet.spellSlots.length; i++) {
+        const slot = characterSheet.spellSlots[i] || {};
+        setInputValue(`spell-slot-${i + 1}-total`, slot.total, 0);
+        setInputValue(`spell-slot-${i + 1}-expended`, slot.expended, 0);
+      }
+    }
+    
+    console.log('Form populated from character sheet');
+  } catch (e) {
+    console.error('Error populating form from character sheet:', e);
+  }
+}
+
 // Connection status
 socket.on('connect', () => {
   console.log('Connected to server');
@@ -120,40 +228,21 @@ socket.on('disconnect', () => {
 });
 
 // Join room
-document.getElementById('join-btn').addEventListener('click', async () => {
-  const roomCode = document.getElementById('room-code').value.trim();
+document.getElementById('join-btn').addEventListener('click', () => {
+  const roomCode = document.getElementById('room-code').value.trim().toUpperCase();
   const name = document.getElementById('player-name').value.trim();
 
   if (roomCode && name) {
-    try {
-      const response = await fetch('http://localhost:3000/join-room', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: roomCode })
-      });
-      if (response.ok) {
-        playerName = name;
-        currentRoom = roomCode;
-        socket.emit('join_room', roomCode);
-      } else {
-        alert('Invalid room code');
-      }
-    } catch (error) {
-      alert('Error joining room');
-    }
+    playerName = name;
+    currentRoom = roomCode;
+    // Join directly via socket - no HTTP validation needed
+    socket.emit('player_join_room', { roomCode, playerName: name });
   } else {
     alert('Please enter both room code and your name!');
   }
 });
 
-socket.on('joined_room', (data) => {
-  console.log('Joined room:', data.roomCode);
-  document.getElementById('join-section').style.display = 'none';
-  document.getElementById('roll-section').style.display = 'block';
-  document.getElementById('character-sheet').style.display = 'block';
-  loadCharacterSheet();
-  alert(`Welcome, ${playerName}!`);
-});
+// Note: room_joined handler is at the end of the file with sync logic
 
 // Listen for roll assignments (MVP 3)
 socket.on('assign_roll', (rollRequest) => {
@@ -301,6 +390,31 @@ function updateAllCalculations() {
   updateProfBonus();
   updateSpellcastingAbility();
   updateSpellSlotDisplays();
+  updateHpBar();
+}
+
+// Update HP progress bar and slider
+function updateHpBar() {
+  const currentHp = parseInt(document.getElementById('char-hp').value) || 0;
+  const maxHp = parseInt(document.getElementById('char-max-hp').value) || 1;
+  
+  const hpBar = document.getElementById('hp-bar');
+  const hpSlider = document.getElementById('hp-slider');
+  const hpDisplay = document.getElementById('hp-display');
+  
+  if (hpBar) {
+    hpBar.max = maxHp;
+    hpBar.value = currentHp;
+  }
+  
+  if (hpSlider) {
+    hpSlider.max = maxHp;
+    hpSlider.value = currentHp;
+  }
+  
+  if (hpDisplay) {
+    hpDisplay.textContent = `${currentHp} / ${maxHp}`;
+  }
 }
 
 function updateSavingThrows() {
@@ -512,6 +626,91 @@ document.getElementById('char-form').addEventListener('submit', (e) => {
   }
 });
 
+// Save character sheet to localStorage
+function saveCharacterSheet() {
+  // First update the characterSheet object from the form
+  characterSheet.name = document.getElementById('char-name').value;
+  characterSheet.class = document.getElementById('char-class').value;
+  characterSheet.level = parseInt(document.getElementById('char-level').value) || 1;
+  characterSheet.background = document.getElementById('char-background').value;
+  characterSheet.race = document.getElementById('char-race').value;
+  characterSheet.alignment = document.getElementById('char-alignment').value;
+  characterSheet.xp = parseInt(document.getElementById('char-xp').value) || 0;
+  characterSheet.playerName = document.getElementById('char-player-name').value;
+  characterSheet.hp = parseInt(document.getElementById('char-hp').value) || 0;
+  characterSheet.maxHp = parseInt(document.getElementById('char-max-hp').value) || 0;
+  characterSheet.hitDice = document.getElementById('char-hit-dice').value;
+  characterSheet.ac = parseInt(document.getElementById('char-ac').value) || 10;
+  characterSheet.speed = document.getElementById('char-speed').value;
+  
+  // Abilities
+  characterSheet.abilities = {
+    str: parseInt(document.getElementById('str-score').value) || 10,
+    dex: parseInt(document.getElementById('dex-score').value) || 10,
+    con: parseInt(document.getElementById('con-score').value) || 10,
+    int: parseInt(document.getElementById('int-score').value) || 10,
+    wis: parseInt(document.getElementById('wis-score').value) || 10,
+    cha: parseInt(document.getElementById('cha-score').value) || 10
+  };
+  
+  // Manual mods
+  characterSheet.manualMods = {
+    str: parseInt(document.getElementById('str-manual-mod').value) || 0,
+    dex: parseInt(document.getElementById('dex-manual-mod').value) || 0,
+    con: parseInt(document.getElementById('con-manual-mod').value) || 0,
+    int: parseInt(document.getElementById('int-manual-mod').value) || 0,
+    wis: parseInt(document.getElementById('wis-manual-mod').value) || 0,
+    cha: parseInt(document.getElementById('cha-manual-mod').value) || 0
+  };
+  
+  // Saving throws proficiencies
+  const abilities = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
+  abilities.forEach(ability => {
+    characterSheet.savingThrows[ability] = document.getElementById(`${ability}-save-prof`).checked;
+  });
+  
+  // Skills
+  const skillNames = ['acrobatics', 'animal-handling', 'arcana', 'athletics', 'deception', 'history', 
+                      'insight', 'intimidation', 'investigation', 'medicine', 'nature', 'perception',
+                      'performance', 'persuasion', 'religion', 'sleight-of-hand', 'stealth', 'survival'];
+  skillNames.forEach(skill => {
+    characterSheet.skills[skill] = {
+      prof: document.getElementById(`${skill}-prof`)?.checked || false,
+      expertise: document.getElementById(`${skill}-exp`)?.checked || false
+    };
+  });
+  
+  // Weapons
+  characterSheet.weapons = [];
+  for (let i = 1; i <= 3; i++) {
+    characterSheet.weapons.push({
+      name: document.getElementById(`weapon-${i}-name`)?.value || '',
+      damage: document.getElementById(`weapon-${i}-damage`)?.value || '',
+      properties: document.getElementById(`weapon-${i}-properties`)?.value || '',
+      ability: document.getElementById(`weapon-${i}-ability`)?.value || 'str',
+      bonus: parseInt(document.getElementById(`weapon-${i}-bonus`)?.value) || 0
+    });
+  }
+  
+  // Equipment and features
+  characterSheet.equipment = document.getElementById('char-equipment')?.value || '';
+  characterSheet.features = document.getElementById('char-features')?.value || '';
+  characterSheet.spells = document.getElementById('char-spells')?.value || '';
+  
+  // Spellcasting
+  characterSheet.spellcastingAbility = document.getElementById('spellcasting-ability')?.value || '';
+  characterSheet.spellSaveDC = parseInt(document.getElementById('spell-save-dc')?.value) || 0;
+  characterSheet.spellAttackBonus = parseInt(document.getElementById('spell-attack-bonus')?.value) || 0;
+  
+  // Save to localStorage
+  try {
+    localStorage.setItem('dordroller_character', JSON.stringify(characterSheet));
+    console.log('Character sheet saved to localStorage');
+  } catch (e) {
+    console.error('Failed to save character sheet:', e);
+  }
+}
+
 // Update calculations on changes
 document.querySelectorAll('input[id="char-level"]').forEach(input => {
   input.addEventListener('input', updateAllCalculations);
@@ -530,6 +729,34 @@ document.querySelectorAll('input[id^="spell-slot-"][id$="-total"]').forEach(inpu
 });
 
 document.getElementById('spellcasting-ability').addEventListener('change', updateSpellcastingAbility);
+
+// HP slider and input synchronization with live sync to GM
+document.getElementById('char-hp').addEventListener('input', () => {
+  updateHpBar();
+  debouncedSync();
+});
+document.getElementById('char-max-hp').addEventListener('input', () => {
+  updateHpBar();
+  debouncedSync();
+});
+document.getElementById('hp-slider').addEventListener('input', (e) => {
+  const value = parseInt(e.target.value) || 0;
+  document.getElementById('char-hp').value = value;
+  updateHpBar();
+  debouncedSync();
+});
+
+// AC change triggers live sync
+document.getElementById('char-ac').addEventListener('input', debouncedSync);
+
+// Debounced sync to avoid flooding the server
+let syncTimeout = null;
+function debouncedSync() {
+  if (syncTimeout) clearTimeout(syncTimeout);
+  syncTimeout = setTimeout(() => {
+    syncPlayerSummary();
+  }, 300); // Wait 300ms after last change before syncing
+}
 
 // Tab switching
 document.querySelectorAll('.tab-button').forEach(button => {
@@ -583,8 +810,35 @@ const skillNames = {
   'survival': 'Survival'
 };
 
-function rollD20() {
+// Simple d20 roll
+function rollD20Single() {
   return Math.floor(Math.random() * 20) + 1;
+}
+
+// Roll d20 with advantage/disadvantage support
+// Returns { result: number, rolls: number[], mode: string }
+function rollD20WithMode() {
+  const mode = currentRollMode;
+  
+  if (mode === 'normal') {
+    const roll = rollD20Single();
+    return { result: roll, rolls: [roll], mode: 'normal' };
+  }
+  
+  // Roll 2d20 for advantage or disadvantage
+  const roll1 = rollD20Single();
+  const roll2 = rollD20Single();
+  
+  if (mode === 'advantage') {
+    return { result: Math.max(roll1, roll2), rolls: [roll1, roll2], mode: 'advantage' };
+  } else {
+    return { result: Math.min(roll1, roll2), rolls: [roll1, roll2], mode: 'disadvantage' };
+  }
+}
+
+// Legacy function for compatibility
+function rollD20() {
+  return rollD20WithMode().result;
 }
 
 function getModifierFromElement(elementId) {
@@ -615,21 +869,22 @@ function handleQuickRoll(rollType, key) {
     label = `${skillNames[key]} Check`;
   }
 
-  const d20Result = rollD20();
-  const total = d20Result + modifier;
+  const rollResult = rollD20WithMode();
+  const total = rollResult.result + modifier;
 
   const rollData = {
     roomCode: currentRoom,
     roller: playerName,
     characterName: characterName,
     diceType: 'd20',
-    quantity: 1,
+    quantity: rollResult.rolls.length,
     result: total,
-    label: label,
+    label: `${characterName}: ${label}`,
     modifier: modifier,
-    rawResult: d20Result,
-    individualRolls: [d20Result],
-    rollType: 'normal',
+    rawResult: rollResult.result,
+    individualRolls: rollResult.rolls,
+    rollType: rollType,
+    rollMode: rollResult.mode,
     timestamp: Date.now()
   };
 
@@ -638,29 +893,65 @@ function handleQuickRoll(rollType, key) {
   console.log('Player roll sent:', rollData);
 
   // Show feedback to the player
-  showRollFeedback(d20Result, modifier, total, label);
+  showRollFeedback(rollResult, modifier, total, label);
 }
 
-function showRollFeedback(roll, modifier, total, label) {
+function showRollFeedback(rollResult, modifier, total, label) {
   const toast = document.getElementById('roll-toast');
   const modSign = modifier >= 0 ? '+' : '';
   
-  // Remove any existing classes
-  toast.classList.remove('show', 'nat-20', 'nat-1');
+  // Handle both old format (number) and new format (object)
+  const isAdvDisadv = typeof rollResult === 'object' && rollResult.mode !== 'normal';
+  const usedRoll = typeof rollResult === 'object' ? rollResult.result : rollResult;
+  const rolls = typeof rollResult === 'object' ? rollResult.rolls : [rollResult];
+  const mode = typeof rollResult === 'object' ? rollResult.mode : 'normal';
   
-  // Add nat 20/1 class if applicable
-  if (roll === 20) toast.classList.add('nat-20');
-  else if (roll === 1) toast.classList.add('nat-1');
+  // Remove any existing classes
+  toast.classList.remove('show', 'nat-20', 'nat-1', 'advantage', 'disadvantage');
+  
+  // Add nat 20/1 class if applicable (based on the used roll)
+  if (usedRoll === 20) toast.classList.add('nat-20');
+  else if (usedRoll === 1) toast.classList.add('nat-1');
+  
+  // Add advantage/disadvantage class
+  if (mode === 'advantage') toast.classList.add('advantage');
+  else if (mode === 'disadvantage') toast.classList.add('disadvantage');
+  
+  // Build the dice display
+  let diceDisplay;
+  if (isAdvDisadv) {
+    const [roll1, roll2] = rolls;
+    const usedIndex = mode === 'advantage' ? (roll1 >= roll2 ? 0 : 1) : (roll1 <= roll2 ? 0 : 1);
+    const modeIcon = mode === 'advantage' ? 'fa-arrow-up' : 'fa-arrow-down';
+    const modeLabel = mode === 'advantage' ? 'ADV' : 'DIS';
+    
+    diceDisplay = `
+      <span class="roll-toast-dice adv-disadv-roll">
+        <span class="roll-mode-indicator ${mode}">
+          <i class="fa-solid ${modeIcon}"></i> ${modeLabel}
+        </span>
+        <span class="roll-pair">
+          <span class="roll-value ${usedIndex === 0 ? 'used' : 'dropped'}">${roll1}</span>
+          <span class="roll-separator">/</span>
+          <span class="roll-value ${usedIndex === 1 ? 'used' : 'dropped'}">${roll2}</span>
+        </span>
+      </span>
+    `;
+  } else {
+    diceDisplay = `
+      <span class="roll-toast-dice">
+        <i class="fa-solid fa-dice-d20"></i>
+        <span class="roll-value">${usedRoll}</span>
+      </span>
+    `;
+  }
   
   toast.innerHTML = `
     <button class="roll-toast-close" onclick="closeRollToast()">&times;</button>
     <div class="roll-toast-content">
       <div class="roll-toast-header">${label}</div>
       <div class="roll-toast-body">
-        <span class="roll-toast-dice">
-          <i class="fa-solid fa-dice-d20"></i>
-          <span class="roll-value">${roll}</span>
-        </span>
+        ${diceDisplay}
         <span class="roll-toast-modifier">${modSign}${modifier}</span>
         <span>=</span>
         <span class="roll-toast-total">${total}</span>
@@ -685,6 +976,76 @@ window.closeRollToast = function() {
   toast.classList.remove('show');
   clearTimeout(window.rollToastTimeout);
 };
+
+// Death save specific feedback
+function showDeathSaveFeedback(rollResult, outcome, outcomeType) {
+  const toast = document.getElementById('roll-toast');
+  const roll = rollResult.result;
+  const rolls = rollResult.rolls;
+  const mode = rollResult.mode;
+  const isAdvDisadv = mode !== 'normal';
+  
+  // Remove any existing classes
+  toast.classList.remove('show', 'nat-20', 'nat-1', 'advantage', 'disadvantage');
+  
+  // Add outcome class
+  if (outcomeType === 'crit') toast.classList.add('nat-20');
+  else if (outcomeType === 'critfail') toast.classList.add('nat-1');
+  
+  // Add advantage/disadvantage class
+  if (mode === 'advantage') toast.classList.add('advantage');
+  else if (mode === 'disadvantage') toast.classList.add('disadvantage');
+  
+  // Build the dice display
+  let diceDisplay;
+  if (isAdvDisadv) {
+    const [roll1, roll2] = rolls;
+    const usedIndex = mode === 'advantage' ? (roll1 >= roll2 ? 0 : 1) : (roll1 <= roll2 ? 0 : 1);
+    const modeIcon = mode === 'advantage' ? 'fa-arrow-up' : 'fa-arrow-down';
+    const modeLabel = mode === 'advantage' ? 'ADV' : 'DIS';
+    
+    diceDisplay = `
+      <span class="roll-toast-dice adv-disadv-roll">
+        <span class="roll-mode-indicator ${mode}">
+          <i class="fa-solid ${modeIcon}"></i> ${modeLabel}
+        </span>
+        <span class="roll-pair">
+          <span class="roll-value ${usedIndex === 0 ? 'used' : 'dropped'}">${roll1}</span>
+          <span class="roll-separator">/</span>
+          <span class="roll-value ${usedIndex === 1 ? 'used' : 'dropped'}">${roll2}</span>
+        </span>
+      </span>
+    `;
+  } else {
+    diceDisplay = `
+      <span class="roll-toast-dice">
+        <i class="fa-solid fa-dice-d20"></i>
+        <span class="roll-value">${roll}</span>
+      </span>
+    `;
+  }
+  
+  toast.innerHTML = `
+    <button class="roll-toast-close" onclick="closeRollToast()">&times;</button>
+    <div class="roll-toast-content">
+      <div class="roll-toast-header">Death Save</div>
+      <div class="roll-toast-body">
+        ${diceDisplay}
+        <span class="roll-toast-total">${outcome}</span>
+      </div>
+    </div>
+  `;
+  
+  // Trigger reflow and show
+  void toast.offsetWidth;
+  toast.classList.add('show');
+  
+  // Auto-hide after 5 seconds
+  clearTimeout(window.rollToastTimeout);
+  window.rollToastTimeout = setTimeout(() => {
+    toast.classList.remove('show');
+  }, 5000);
+}
 
 // Attach event listeners to ability/save/skill roll buttons ONLY (not attack/damage/combat buttons)
 document.querySelectorAll('.roll-btn[data-roll-type="ability"], .roll-btn[data-roll-type="save"], .roll-btn[data-roll-type="skill"]').forEach(button => {
@@ -731,15 +1092,16 @@ function parseDiceNotation(notation) {
   };
 }
 
-// Get attack modifier for a weapon
+// Get attack modifier for a weapon (includes magic bonus)
 function getWeaponAttackModifier(weaponIndex) {
   const abilitySelect = document.getElementById(`weapon-${weaponIndex}-ability`);
   const ability = abilitySelect ? abilitySelect.value : 'str';
   const abilityMod = getModifierFromElement(`${ability}-total`);
   const level = parseInt(document.getElementById('char-level').value) || 1;
   const profBonus = getProficiencyBonus(level);
+  const magicBonus = parseInt(document.getElementById(`weapon-${weaponIndex}-bonus`)?.value) || 0;
   
-  return abilityMod + profBonus;
+  return abilityMod + profBonus + magicBonus;
 }
 
 // Handle initiative roll
@@ -751,26 +1113,27 @@ function handleInitiativeRoll() {
   
   const modifier = getModifierFromElement('char-initiative');
   const characterName = document.getElementById('char-name').value || 'Unknown';
-  const d20Result = rollD20();
-  const total = d20Result + modifier;
+  const rollResult = rollD20WithMode();
+  const total = rollResult.result + modifier;
   
   const rollData = {
     roomCode: currentRoom,
     roller: playerName,
     characterName: characterName,
     diceType: 'd20',
-    quantity: 1,
+    quantity: rollResult.rolls.length,
     result: total,
-    label: 'Initiative',
+    label: `${characterName}: Initiative`,
     modifier: modifier,
-    rawResult: d20Result,
-    individualRolls: [d20Result],
+    rawResult: rollResult.result,
+    individualRolls: rollResult.rolls,
     rollType: 'initiative',
+    rollMode: rollResult.mode,
     timestamp: Date.now()
   };
   
   socket.emit('player_roll', rollData);
-  showRollFeedback(d20Result, modifier, total, 'Initiative');
+  showRollFeedback(rollResult, modifier, total, 'Initiative');
 }
 
 // Handle spell attack roll
@@ -782,26 +1145,27 @@ function handleSpellAttackRoll() {
   
   const modifier = parseInt(document.getElementById('spell-attack-bonus').value) || 0;
   const characterName = document.getElementById('char-name').value || 'Unknown';
-  const d20Result = rollD20();
-  const total = d20Result + modifier;
+  const rollResult = rollD20WithMode();
+  const total = rollResult.result + modifier;
   
   const rollData = {
     roomCode: currentRoom,
     roller: playerName,
     characterName: characterName,
     diceType: 'd20',
-    quantity: 1,
+    quantity: rollResult.rolls.length,
     result: total,
-    label: 'Spell Attack',
+    label: `${characterName}: Spell Attack`,
     modifier: modifier,
-    rawResult: d20Result,
-    individualRolls: [d20Result],
+    rawResult: rollResult.result,
+    individualRolls: rollResult.rolls,
     rollType: 'spell-attack',
+    rollMode: rollResult.mode,
     timestamp: Date.now()
   };
   
   socket.emit('player_roll', rollData);
-  showRollFeedback(d20Result, modifier, total, 'Spell Attack');
+  showRollFeedback(rollResult, modifier, total, 'Spell Attack');
 }
 
 // Handle weapon attack roll
@@ -814,34 +1178,48 @@ function handleWeaponAttackRoll(weaponIndex) {
   const weaponName = document.getElementById(`weapon-${weaponIndex}-name`).value || `Weapon ${weaponIndex}`;
   const modifier = getWeaponAttackModifier(weaponIndex);
   const characterName = document.getElementById('char-name').value || 'Unknown';
-  const d20Result = rollD20();
-  const total = d20Result + modifier;
+  const rollResult = rollD20WithMode();
+  const total = rollResult.result + modifier;
   
   const rollData = {
     roomCode: currentRoom,
     roller: playerName,
     characterName: characterName,
     diceType: 'd20',
-    quantity: 1,
+    quantity: rollResult.rolls.length,
     result: total,
-    label: `${weaponName} Attack`,
+    label: `${characterName}: ${weaponName} Attack`,
     modifier: modifier,
-    rawResult: d20Result,
-    individualRolls: [d20Result],
+    rawResult: rollResult.result,
+    individualRolls: rollResult.rolls,
     rollType: 'weapon-attack',
+    rollMode: rollResult.mode,
     timestamp: Date.now()
   };
   
   socket.emit('player_roll', rollData);
-  showRollFeedback(d20Result, modifier, total, `${weaponName} Attack`);
+  showRollFeedback(rollResult, modifier, total, `${weaponName} Attack`);
 }
 
 // ===== DAMAGE MODAL =====
 let currentDamageContext = {
   weaponIndex: null,
   weaponName: '',
-  isSpell: false
+  isSpell: false,
+  abilityMod: 0,
+  abilityName: 'STR'
 };
+
+// Get the ability modifier for weapon damage
+function getWeaponDamageModifier(weaponIndex) {
+  const abilitySelect = document.getElementById(`weapon-${weaponIndex}-ability`);
+  const ability = abilitySelect ? abilitySelect.value : 'str';
+  const abilityMod = getModifierFromElement(`${ability}-total`);
+  return {
+    modifier: abilityMod,
+    abilityName: ability.toUpperCase()
+  };
+}
 
 function openDamageModal(weaponIndex = null, isSpell = false) {
   const modal = document.getElementById('damage-modal');
@@ -853,6 +1231,11 @@ function openDamageModal(weaponIndex = null, isSpell = false) {
   if (isSpell) {
     title.textContent = 'Roll Spell Damage';
     currentDamageContext.weaponName = 'Spell';
+    currentDamageContext.abilityMod = 0;
+    currentDamageContext.abilityName = 'N/A';
+    
+    // Hide ability mod section for spells (spells don't add ability mod to damage by default)
+    document.querySelector('.ability-mod-section').style.display = 'none';
     
     // Parse spell damage dice
     const spellDamage = document.getElementById('spell-damage-dice').value;
@@ -861,31 +1244,43 @@ function openDamageModal(weaponIndex = null, isSpell = false) {
     if (parsed) {
       document.getElementById('damage-dice-count').value = parsed.count;
       document.getElementById('damage-dice-type').value = parsed.sides;
-      document.getElementById('damage-modifier').value = parsed.modifier;
+      document.getElementById('damage-bonus').value = parsed.modifier || 0;
     } else {
       // Default spell damage
       document.getElementById('damage-dice-count').value = 1;
       document.getElementById('damage-dice-type').value = 6;
-      document.getElementById('damage-modifier').value = 0;
+      document.getElementById('damage-bonus').value = 0;
     }
   } else {
     const weaponName = document.getElementById(`weapon-${weaponIndex}-name`).value || `Weapon ${weaponIndex}`;
     title.textContent = `Roll ${weaponName} Damage`;
     currentDamageContext.weaponName = weaponName;
     
-    // Parse weapon damage
+    // Get ability modifier for this weapon
+    const abilityInfo = getWeaponDamageModifier(weaponIndex);
+    currentDamageContext.abilityMod = abilityInfo.modifier;
+    currentDamageContext.abilityName = abilityInfo.abilityName;
+    
+    // Show ability mod section and update display
+    document.querySelector('.ability-mod-section').style.display = 'block';
+    document.getElementById('damage-ability-name').textContent = abilityInfo.abilityName;
+    const modSign = abilityInfo.modifier >= 0 ? '+' : '';
+    document.getElementById('damage-ability-mod').textContent = `${modSign}${abilityInfo.modifier}`;
+    
+    // Parse weapon damage (just the dice, not the modifier - that comes from ability)
     const weaponDamage = document.getElementById(`weapon-${weaponIndex}-damage`).value;
     const parsed = parseDiceNotation(weaponDamage);
     
     if (parsed) {
       document.getElementById('damage-dice-count').value = parsed.count;
       document.getElementById('damage-dice-type').value = parsed.sides;
-      document.getElementById('damage-modifier').value = parsed.modifier;
+      // Any modifier in the damage field goes to bonus (e.g., magic weapon +1)
+      document.getElementById('damage-bonus').value = parsed.modifier || 0;
     } else {
       // Default weapon damage
       document.getElementById('damage-dice-count').value = 1;
       document.getElementById('damage-dice-type').value = 8;
-      document.getElementById('damage-modifier').value = 0;
+      document.getElementById('damage-bonus').value = 0;
     }
   }
   
@@ -905,10 +1300,13 @@ function closeDamageModal() {
 function updateDamagePreview() {
   const baseCount = parseInt(document.getElementById('damage-dice-count').value) || 1;
   const baseSides = document.getElementById('damage-dice-type').value;
-  const modifier = parseInt(document.getElementById('damage-modifier').value) || 0;
+  const bonusMod = parseInt(document.getElementById('damage-bonus').value) || 0;
   const extraCount = parseInt(document.getElementById('extra-dice-count').value) || 0;
   const extraSides = document.getElementById('extra-dice-type').value;
   const isCrit = document.getElementById('damage-crit-toggle').checked;
+  
+  // Total modifier = ability mod + bonus
+  const totalModifier = currentDamageContext.abilityMod + bonusMod;
   
   let preview = '';
   const critMultiplier = isCrit ? 2 : 1;
@@ -921,8 +1319,8 @@ function updateDamagePreview() {
     preview += ` + ${effectiveExtraCount}d${extraSides}`;
   }
   
-  if (modifier !== 0) {
-    preview += modifier >= 0 ? ` + ${modifier}` : ` - ${Math.abs(modifier)}`;
+  if (totalModifier !== 0) {
+    preview += totalModifier >= 0 ? ` + ${totalModifier}` : ` - ${Math.abs(totalModifier)}`;
   }
   
   if (isCrit) {
@@ -941,10 +1339,13 @@ function executeDamageRoll() {
   
   const baseCount = parseInt(document.getElementById('damage-dice-count').value) || 1;
   const baseSides = parseInt(document.getElementById('damage-dice-type').value);
-  const modifier = parseInt(document.getElementById('damage-modifier').value) || 0;
+  const bonusMod = parseInt(document.getElementById('damage-bonus').value) || 0;
   const extraCount = parseInt(document.getElementById('extra-dice-count').value) || 0;
   const extraSides = parseInt(document.getElementById('extra-dice-type').value);
   const isCrit = document.getElementById('damage-crit-toggle').checked;
+  
+  // Total modifier = ability mod + bonus
+  const totalModifier = currentDamageContext.abilityMod + bonusMod;
   
   const critMultiplier = isCrit ? 2 : 1;
   const effectiveBaseCount = baseCount * critMultiplier;
@@ -962,7 +1363,7 @@ function executeDamageRoll() {
     extraTotal = extraRolls.reduce((a, b) => a + b, 0);
   }
   
-  const total = baseTotal + extraTotal + modifier;
+  const total = baseTotal + extraTotal + totalModifier;
   const characterName = document.getElementById('char-name').value || 'Unknown';
   
   // Build description
@@ -978,8 +1379,11 @@ function executeDamageRoll() {
     diceType: 'damage',
     quantity: effectiveBaseCount + effectiveExtraCount,
     result: total,
-    label: `${currentDamageContext.weaponName} Damage${isCrit ? ' (CRITICAL!)' : ''}`,
-    modifier: modifier,
+    label: `${characterName}: ${currentDamageContext.weaponName} Damage${isCrit ? ' (CRITICAL!)' : ''}`,
+    modifier: totalModifier,
+    abilityMod: currentDamageContext.abilityMod,
+    abilityName: currentDamageContext.abilityName,
+    bonusMod: bonusMod,
     rawResult: baseTotal + extraTotal,
     individualRolls: [...baseRolls, ...extraRolls],
     rollType: currentDamageContext.isSpell ? 'spell-damage' : 'weapon-damage',
@@ -1079,8 +1483,470 @@ document.getElementById('damage-modal').addEventListener('click', (e) => {
 });
 document.getElementById('damage-roll-btn').addEventListener('click', executeDamageRoll);
 
+// ===== ADVANTAGE/DISADVANTAGE TOGGLE =====
+const rollModeDescriptions = {
+  'normal': 'Rolling normally (1d20)',
+  'advantage': 'Rolling with ADVANTAGE (2d20, take highest)',
+  'disadvantage': 'Rolling with DISADVANTAGE (2d20, take lowest)'
+};
+
+document.querySelectorAll('.roll-mode-btn').forEach(button => {
+  button.addEventListener('click', (e) => {
+    e.preventDefault();
+    
+    // Remove active class from all buttons
+    document.querySelectorAll('.roll-mode-btn').forEach(btn => btn.classList.remove('active'));
+    
+    // Add active class to clicked button
+    button.classList.add('active');
+    
+    // Update the roll mode
+    currentRollMode = button.dataset.mode;
+    
+    // Update description text
+    const description = document.getElementById('roll-mode-description');
+    if (description) {
+      description.textContent = rollModeDescriptions[currentRollMode];
+    }
+    
+    console.log('Roll mode changed to:', currentRollMode);
+  });
+});
+
 // Update preview when modal inputs change
-['damage-dice-count', 'damage-dice-type', 'damage-modifier', 'extra-dice-count', 'extra-dice-type', 'damage-crit-toggle'].forEach(id => {
+['damage-dice-count', 'damage-dice-type', 'damage-bonus', 'extra-dice-count', 'extra-dice-type', 'damage-crit-toggle'].forEach(id => {
   document.getElementById(id).addEventListener('input', updateDamagePreview);
   document.getElementById(id).addEventListener('change', updateDamagePreview);
 });
+
+// ===== DEATH SAVES TRACKER =====
+const deathSaves = {
+  successes: 0,
+  failures: 0
+};
+
+function updateDeathSaveCheckboxes() {
+  // Update success checkboxes
+  for (let i = 1; i <= 3; i++) {
+    const checkbox = document.getElementById(`death-success-${i}`);
+    if (checkbox) {
+      checkbox.checked = i <= deathSaves.successes;
+    }
+  }
+  
+  // Update failure checkboxes
+  for (let i = 1; i <= 3; i++) {
+    const checkbox = document.getElementById(`death-failure-${i}`);
+    if (checkbox) {
+      checkbox.checked = i <= deathSaves.failures;
+    }
+  }
+  
+  // Check for stabilize or death
+  if (deathSaves.successes >= 3) {
+    showRollFeedback('Stabilized! 💚', 'success');
+  } else if (deathSaves.failures >= 3) {
+    showRollFeedback('Character has died... 💀', 'failure');
+  }
+}
+
+function addDeathSaveSuccess(count = 1) {
+  deathSaves.successes = Math.min(3, deathSaves.successes + count);
+  updateDeathSaveCheckboxes();
+}
+
+function addDeathSaveFailure(count = 1) {
+  deathSaves.failures = Math.min(3, deathSaves.failures + count);
+  updateDeathSaveCheckboxes();
+}
+
+function resetDeathSaves() {
+  deathSaves.successes = 0;
+  deathSaves.failures = 0;
+  updateDeathSaveCheckboxes();
+}
+
+function rollDeathSave() {
+  if (!currentRoom) {
+    alert('Please join a room first!');
+    return;
+  }
+  
+  const rollResult = rollD20WithMode();
+  const roll = rollResult.result;
+  const characterName = document.getElementById('char-name').value || 'Unknown';
+  
+  let outcome = '';
+  let outcomeType = '';
+  
+  // Check for natural 20 (using first roll for nat 20/1 check in adv/disadv)
+  const isNat20 = rollResult.rolls.includes(20) && (rollResult.mode === 'normal' || (rollResult.mode === 'advantage' && roll === 20));
+  const isNat1 = rollResult.rolls.includes(1) && (rollResult.mode === 'normal' || (rollResult.mode === 'disadvantage' && roll === 1));
+  
+  if (isNat20) {
+    // Natural 20: regain 1 HP, stabilize with 2 successes worth
+    addDeathSaveSuccess(2);
+    outcome = 'NAT 20! Regain 1 HP and stabilize! 🎉';
+    outcomeType = 'crit';
+  } else if (isNat1) {
+    // Natural 1: 2 failures
+    addDeathSaveFailure(2);
+    outcome = 'NAT 1! Two death save failures! 💀';
+    outcomeType = 'critfail';
+  } else if (roll >= 10) {
+    // Success
+    addDeathSaveSuccess(1);
+    outcome = `Success! (${deathSaves.successes}/3)`;
+    outcomeType = 'success';
+  } else {
+    // Failure
+    addDeathSaveFailure(1);
+    outcome = `Failure! (${deathSaves.failures}/3)`;
+    outcomeType = 'failure';
+  }
+  
+  // Build roll description for feedback
+  let rollDescription = `Death Save: ${roll}`;
+  if (rollResult.mode !== 'normal') {
+    rollDescription = `Death Save (${rollResult.mode}): [${rollResult.rolls.join(', ')}] → ${roll}`;
+  }
+  
+  // Show feedback
+  showDeathSaveFeedback(rollResult, outcome, outcomeType);
+  
+  // Emit to server (matching standard roll format for OBS)
+  socket.emit('player_roll', {
+    roomCode: currentRoom,
+    roller: playerName,
+    characterName: characterName,
+    diceType: 'd20',
+    quantity: rollResult.rolls.length,
+    result: roll,
+    label: `${characterName}: Death Save - ${outcome}`,
+    modifier: 0,
+    rawResult: roll,
+    individualRolls: rollResult.rolls,
+    rollType: 'Death Save',
+    rollMode: rollResult.mode,
+    timestamp: Date.now()
+  });
+}
+
+// Death save roll button listener
+document.getElementById('roll-death-save')?.addEventListener('click', rollDeathSave);
+
+// Reset death saves button listener
+document.getElementById('reset-death-saves')?.addEventListener('click', resetDeathSaves);
+
+// Manual checkbox clicks for death saves
+document.querySelectorAll('.death-save-checkbox').forEach(checkbox => {
+  checkbox.addEventListener('click', (e) => {
+    const type = checkbox.dataset.type;
+    const index = parseInt(checkbox.dataset.index);
+    
+    if (type === 'success') {
+      // Clicking sets successes to that index if checked, or index-1 if unchecked
+      deathSaves.successes = checkbox.checked ? index : index - 1;
+    } else {
+      deathSaves.failures = checkbox.checked ? index : index - 1;
+    }
+    
+    updateDeathSaveCheckboxes();
+  });
+});
+
+// ===== PLAYER SYNC FOR GM TRACKING =====
+
+// Collect summary data for GM player list
+function collectSummaryData() {
+  return {
+    characterName: document.getElementById('char-name')?.value || 'Unknown',
+    ac: document.getElementById('char-ac')?.value || '—',
+    currentHp: document.getElementById('char-hp')?.value || '—',
+    maxHp: document.getElementById('char-max-hp')?.value || '—',
+    level: document.getElementById('char-level')?.value || '—',
+    race: document.getElementById('char-race')?.value || '—',
+    class: document.getElementById('char-class')?.value || '—'
+  };
+}
+
+// Collect full character sheet data for GM view
+function collectFullSheetData() {
+  const getValue = (id) => document.getElementById(id)?.value || '';
+  const getText = (id) => document.getElementById(id)?.textContent || '';
+  const getChecked = (id) => document.getElementById(id)?.checked || false;
+  const getNumber = (id) => parseInt(document.getElementById(id)?.value) || 0;
+  
+  return {
+    // Basic Info
+    characterName: getValue('char-name'),
+    playerName: playerName,
+    race: getValue('char-race'),
+    class: getValue('char-class'),
+    level: getValue('char-level'),
+    background: getValue('char-background'),
+    
+    // Ability Scores (use getText for calculated totals)
+    abilities: {
+      str: { score: getNumber('str-score'), modifier: getText('str-total') },
+      dex: { score: getNumber('dex-score'), modifier: getText('dex-total') },
+      con: { score: getNumber('con-score'), modifier: getText('con-total') },
+      int: { score: getNumber('int-score'), modifier: getText('int-total') },
+      wis: { score: getNumber('wis-score'), modifier: getText('wis-total') },
+      cha: { score: getNumber('cha-score'), modifier: getText('cha-total') }
+    },
+    
+    // Combat Stats (use correct IDs from HTML)
+    combat: {
+      ac: getValue('char-ac'),
+      currentHp: getValue('char-hp'),
+      maxHp: getValue('char-max-hp'),
+      tempHp: '0', // No temp HP field in current HTML
+      speed: getValue('char-speed'),
+      initiative: getText('char-initiative'),
+      proficiencyBonus: getText('prof-bonus'),
+      hitDice: getValue('char-hit-dice')
+    },
+    
+    // Saving Throws (use getText for calculated totals)
+    savingThrows: {
+      str: { total: getText('str-save-total'), proficient: getChecked('str-save-prof') },
+      dex: { total: getText('dex-save-total'), proficient: getChecked('dex-save-prof') },
+      con: { total: getText('con-save-total'), proficient: getChecked('con-save-prof') },
+      int: { total: getText('int-save-total'), proficient: getChecked('int-save-prof') },
+      wis: { total: getText('wis-save-total'), proficient: getChecked('wis-save-prof') },
+      cha: { total: getText('cha-save-total'), proficient: getChecked('cha-save-prof') }
+    },
+    
+    // Death Saves
+    deathSaves: {
+      successes: deathSaves.successes,
+      failures: deathSaves.failures
+    },
+    
+    // Skills (use getText for calculated totals, correct expertise ID suffix)
+    skills: {
+      acrobatics: { total: getText('acrobatics-total'), proficient: getChecked('acrobatics-prof'), expertise: getChecked('acrobatics-exp') },
+      animalHandling: { total: getText('animal-handling-total'), proficient: getChecked('animal-handling-prof'), expertise: getChecked('animal-handling-exp') },
+      arcana: { total: getText('arcana-total'), proficient: getChecked('arcana-prof'), expertise: getChecked('arcana-exp') },
+      athletics: { total: getText('athletics-total'), proficient: getChecked('athletics-prof'), expertise: getChecked('athletics-exp') },
+      deception: { total: getText('deception-total'), proficient: getChecked('deception-prof'), expertise: getChecked('deception-exp') },
+      history: { total: getText('history-total'), proficient: getChecked('history-prof'), expertise: getChecked('history-exp') },
+      insight: { total: getText('insight-total'), proficient: getChecked('insight-prof'), expertise: getChecked('insight-exp') },
+      intimidation: { total: getText('intimidation-total'), proficient: getChecked('intimidation-prof'), expertise: getChecked('intimidation-exp') },
+      investigation: { total: getText('investigation-total'), proficient: getChecked('investigation-prof'), expertise: getChecked('investigation-exp') },
+      medicine: { total: getText('medicine-total'), proficient: getChecked('medicine-prof'), expertise: getChecked('medicine-exp') },
+      nature: { total: getText('nature-total'), proficient: getChecked('nature-prof'), expertise: getChecked('nature-exp') },
+      perception: { total: getText('perception-total'), proficient: getChecked('perception-prof'), expertise: getChecked('perception-exp') },
+      performance: { total: getText('performance-total'), proficient: getChecked('performance-prof'), expertise: getChecked('performance-exp') },
+      persuasion: { total: getText('persuasion-total'), proficient: getChecked('persuasion-prof'), expertise: getChecked('persuasion-exp') },
+      religion: { total: getText('religion-total'), proficient: getChecked('religion-prof'), expertise: getChecked('religion-exp') },
+      sleightOfHand: { total: getText('sleight-of-hand-total'), proficient: getChecked('sleight-of-hand-prof'), expertise: getChecked('sleight-of-hand-exp') },
+      stealth: { total: getText('stealth-total'), proficient: getChecked('stealth-prof'), expertise: getChecked('stealth-exp') },
+      survival: { total: getText('survival-total'), proficient: getChecked('survival-prof'), expertise: getChecked('survival-exp') }
+    },
+    
+    // Weapons
+    weapons: [
+      { name: getValue('weapon-1-name'), damage: getValue('weapon-1-damage'), properties: getValue('weapon-1-properties') },
+      { name: getValue('weapon-2-name'), damage: getValue('weapon-2-damage'), properties: getValue('weapon-2-properties') },
+      { name: getValue('weapon-3-name'), damage: getValue('weapon-3-damage'), properties: getValue('weapon-3-properties') }
+    ],
+    
+    // Spellcasting
+    spellcasting: {
+      attackBonus: getText('spell-attack-bonus'),
+      saveDC: getText('spell-save-dc')
+    }
+  };
+}
+
+// Send summary sync to server (called every 30 seconds or on save)
+function syncPlayerSummary() {
+  if (!currentRoom) return;
+  
+  const summary = collectSummaryData();
+  socket.emit('player_sync', summary);
+  console.log('Player summary synced:', summary);
+}
+
+// Save button - immediate sync
+document.getElementById('save-sheet-btn')?.addEventListener('click', () => {
+  if (!currentRoom) {
+    alert('You must join a room first!');
+    return;
+  }
+  
+  // Save to localStorage
+  saveCharacterSheet();
+  
+  // Sync to server
+  syncPlayerSummary();
+  
+  // Visual feedback
+  const btn = document.getElementById('save-sheet-btn');
+  const originalText = btn.innerHTML;
+  btn.innerHTML = '<i class="fa-solid fa-check"></i> Saved!';
+  btn.classList.add('saved');
+  setTimeout(() => {
+    btn.innerHTML = originalText;
+    btn.classList.remove('saved');
+  }, 2000);
+});
+
+// ===== EXPORT/IMPORT CHARACTER SHEET =====
+
+// Export button - show confirmation modal
+document.getElementById('export-sheet-btn')?.addEventListener('click', () => {
+  document.getElementById('export-modal').classList.add('show');
+});
+
+// Close export modal
+document.getElementById('export-modal-close')?.addEventListener('click', () => {
+  document.getElementById('export-modal').classList.remove('show');
+});
+
+document.getElementById('cancel-export-btn')?.addEventListener('click', () => {
+  document.getElementById('export-modal').classList.remove('show');
+});
+
+// Close modal on overlay click
+document.getElementById('export-modal')?.addEventListener('click', (e) => {
+  if (e.target.id === 'export-modal') {
+    document.getElementById('export-modal').classList.remove('show');
+  }
+});
+
+// Confirm export - download JSON file
+document.getElementById('confirm-export-btn')?.addEventListener('click', () => {
+  // Save current sheet state first
+  saveCharacterSheet();
+  
+  // Create export data with metadata
+  const exportData = {
+    version: '1.0',
+    exportDate: new Date().toISOString(),
+    characterName: characterSheet.name || 'Unknown',
+    data: characterSheet
+  };
+  
+  // Create and download file
+  const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const filename = `${(characterSheet.name || 'character').replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.json`;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  
+  // Close modal
+  document.getElementById('export-modal').classList.remove('show');
+  
+  // Show success feedback
+  alert(`Character sheet exported as "${filename}"`);
+});
+
+// Import button - trigger file input
+document.getElementById('import-sheet-btn')?.addEventListener('click', () => {
+  document.getElementById('import-file-input').click();
+});
+
+// Handle file selection for import
+document.getElementById('import-file-input')?.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  
+  const reader = new FileReader();
+  reader.onload = (event) => {
+    try {
+      const importedData = JSON.parse(event.target.result);
+      
+      // Validate the file has character data
+      if (!importedData.data || typeof importedData.data !== 'object') {
+        alert('Invalid character file. Please select a valid exported character sheet.');
+        return;
+      }
+      
+      // Confirm import (will overwrite current data)
+      const characterName = importedData.characterName || importedData.data.name || 'Unknown';
+      const exportDate = importedData.exportDate ? new Date(importedData.exportDate).toLocaleDateString() : 'Unknown';
+      
+      if (!confirm(`Import "${characterName}" (exported ${exportDate})?\n\nThis will replace your current character sheet. Make sure you've exported your current sheet if you want to keep it.`)) {
+        return;
+      }
+      
+      // Import the character data
+      characterSheet = { ...characterSheet, ...importedData.data };
+      
+      // Save to localStorage
+      saveCharacterSheet();
+      
+      // Reload the UI
+      loadCharacterSheet();
+      
+      // Sync if in a room
+      if (currentRoom) {
+        syncPlayerSummary();
+      }
+      
+      alert(`Successfully imported "${characterName}"!`);
+    } catch (error) {
+      console.error('Import error:', error);
+      alert('Failed to import character sheet. The file may be corrupted or in an invalid format.');
+    }
+  };
+  
+  reader.readAsText(file);
+  
+  // Reset file input so the same file can be selected again
+  e.target.value = '';
+});
+
+// Start sync interval when player joins
+let syncInterval = null;
+
+socket.on('room_joined', (data) => {
+  console.log('Joined room:', data.roomCode);
+  document.getElementById('join-section').style.display = 'none';
+  document.getElementById('roll-section').style.display = 'block';
+  document.getElementById('character-sheet').style.display = 'block';
+  loadCharacterSheet();
+  alert(`Welcome, ${playerName}!`);
+  
+  // Start syncing summary data every 30 seconds
+  if (syncInterval) clearInterval(syncInterval);
+  syncInterval = setInterval(syncPlayerSummary, 30000);
+  
+  // Send initial sync after a short delay to let character sheet load
+  setTimeout(syncPlayerSummary, 1000);
+});
+
+// Handle GM request for full character sheet
+socket.on('request_sheet_data', ({ requesterId }) => {
+  console.log('GM requested full character sheet');
+  const sheetData = collectFullSheetData();
+  socket.emit('player_sheet_response', { requesterId, sheetData });
+});
+
+// Handle GM request for all players to sync
+socket.on('request_sync', () => {
+  console.log('GM requested sync - sending summary data');
+  syncPlayerSummary();
+});
+
+// Clean up on disconnect
+socket.on('disconnect', () => {
+  if (syncInterval) {
+    clearInterval(syncInterval);
+    syncInterval = null;
+  }
+});
+
+// ===== INITIALIZATION =====
+// Populate form from saved character sheet on page load
+populateFormFromCharacterSheet();
+updateAllCalculations();
+updateHpBar();

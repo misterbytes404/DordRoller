@@ -4,10 +4,47 @@
   box-sizing: border-box;
 }
 
+/* ===== DARKLORD COLOR SCHEME ===== */
+:root {
+  /* Primary - Amber/Gold (DarkLord's eyes) */
+  --color-primary: #f0a500;
+  --color-primary-hover: #d49200;
+  --color-primary-glow: rgba(240, 165, 0, 0.4);
+  
+  /* Secondary - Deep Red (Villain accent, damage) */
+  --color-danger: #c41e3a;
+  --color-danger-light: #ff6b6b;
+  --color-danger-glow: rgba(196, 30, 58, 0.4);
+  
+  /* Success - Green (Healing, nat 20) */
+  --color-success: #4caf50;
+  --color-success-glow: rgba(76, 175, 80, 0.5);
+  
+  /* Nat 20 - Bright Gold */
+  --color-crit: #ffd700;
+  --color-crit-glow: rgba(255, 215, 0, 0.5);
+  
+  /* Backgrounds */
+  --bg-darkest: #0d0d0d;
+  --bg-dark: #1a1a1a;
+  --bg-card: #1e1e1e;
+  --bg-input: #252525;
+  --bg-elevated: #2a2a2a;
+  
+  /* Borders */
+  --border-color: #333;
+  --border-subtle: #2a2a2a;
+  
+  /* Text */
+  --text-primary: #e0e0e0;
+  --text-secondary: #888;
+  --text-muted: #666;
+}
+
 body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background: #1a1a1a;
-  color: #e0e0e0;
+  background: var(--bg-darkest);
+  color: var(--text-primary);
   padding: 20px;
   display: flex;
   justify-content: center;
@@ -17,7 +54,7 @@ body {
 
 #app {
   width: 100%;
-  max-width: 1400px;
+  max-width: 1600px;
   padding: 20px;
 }
 
@@ -26,33 +63,43 @@ header {
   justify-content: space-between;
   align-items: center;
   padding: 20px;
-  background: #2a2a2a;
+  background: var(--bg-elevated);
   border-radius: 8px;
   margin-bottom: 20px;
+  border: 1px solid var(--border-color);
 }
 
 h1 {
-  color: #ff6b6b;
+  color: var(--color-primary);
   font-size: 1.5rem;
+  text-shadow: 0 0 20px var(--color-primary-glow);
+}
+
+h1 .fa-dice-d20 {
+  font-size: 1.1em;
+  margin-right: 8px;
+  filter: drop-shadow(0 0 8px var(--color-primary-glow));
 }
 
 #connection-status {
   padding: 8px 16px;
   border-radius: 4px;
-  background: #333;
+  background: var(--bg-input);
   font-weight: bold;
   font-size: 0.9rem;
+  border: 1px solid var(--border-color);
 }
 
 section {
-  background: #2a2a2a;
+  background: var(--bg-dark);
   padding: 30px;
   border-radius: 8px;
   margin-bottom: 20px;
+  border: 1px solid var(--border-color);
 }
 
 h2 {
-  color: #4ecdc4;
+  color: var(--color-primary);
   margin-bottom: 20px;
   text-align: center;
 }
@@ -67,34 +114,42 @@ input, button {
 }
 
 input {
-  background: #333;
-  color: #e0e0e0;
-  border: 1px solid #444;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 8px var(--color-primary-glow);
 }
 
 button {
-  background: #4ecdc4;
-  color: #1a1a1a;
+  background: var(--color-primary);
+  color: var(--bg-darkest);
   font-weight: bold;
   cursor: pointer;
-  transition: background 0.3s;
+  transition: all 0.3s ease;
 }
 
 button:hover {
-  background: #45b7aa;
+  background: var(--color-primary-hover);
+  box-shadow: 0 0 15px var(--color-primary-glow);
 }
 
 #roll-request-info {
-  background: #333;
+  background: var(--bg-input);
   padding: 20px;
   border-radius: 8px;
   margin-bottom: 15px;
   text-align: center;
+  border: 1px solid var(--border-color);
 }
 
 #request-text {
   font-size: 1.2rem;
-  color: #4ecdc4;
+  color: var(--color-primary);
 }
 
 #result-display {
@@ -109,11 +164,11 @@ button:hover {
   z-index: 1000;
   min-width: 280px;
   max-width: 350px;
-  background: #2a2a2a;
-  border: 2px solid #4ecdc4;
+  background: var(--bg-elevated);
+  border: 2px solid var(--color-primary);
   border-radius: 12px;
   padding: 0;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 20px var(--color-primary-glow);
   transform: translateX(400px);
   opacity: 0;
   transition: transform 0.3s ease, opacity 0.3s ease;
@@ -133,7 +188,7 @@ button:hover {
 
 .roll-toast-header {
   font-size: 0.9rem;
-  color: #4ecdc4;
+  color: var(--color-primary);
   font-weight: bold;
   margin-bottom: 8px;
 }
@@ -154,54 +209,57 @@ button:hover {
 
 .roll-toast-dice .fa-dice-d20 {
   font-size: 28px;
-  color: #4ecdc4;
+  color: var(--color-primary);
 }
 
 .roll-toast-dice .roll-value {
   font-size: 1.6rem;
   font-weight: bold;
-  color: #e0e0e0;
+  color: var(--text-primary);
 }
 
 .roll-toast-modifier {
-  color: #888;
+  color: var(--text-secondary);
 }
 
 .roll-toast-total {
   font-size: 2rem;
   font-weight: bold;
-  color: #4ecdc4;
+  color: var(--color-primary);
 }
 
-/* Nat 20 / Nat 1 styling */
+/* Nat 20 - Golden Glow! */
 .roll-toast.nat-20 {
-  border-color: #4caf50;
-  background: linear-gradient(135deg, #1a3a1a, #2a2a2a);
+  border-color: var(--color-crit);
+  background: linear-gradient(135deg, #2a2a1a, var(--bg-elevated));
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 30px var(--color-crit-glow);
 }
 
 .roll-toast.nat-20 .fa-dice-d20,
 .roll-toast.nat-20 .roll-value {
-  color: #4caf50;
+  color: var(--color-crit);
 }
 
 .roll-toast.nat-20 .roll-toast-total {
-  color: #4caf50;
-  text-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+  color: var(--color-crit);
+  text-shadow: 0 0 15px var(--color-crit-glow);
 }
 
+/* Nat 1 - Deep Red Danger */
 .roll-toast.nat-1 {
-  border-color: #f44336;
-  background: linear-gradient(135deg, #3a1a1a, #2a2a2a);
+  border-color: var(--color-danger);
+  background: linear-gradient(135deg, #2a1a1a, var(--bg-elevated));
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 20px var(--color-danger-glow);
 }
 
 .roll-toast.nat-1 .fa-dice-d20,
 .roll-toast.nat-1 .roll-value {
-  color: #f44336;
+  color: var(--color-danger);
 }
 
 .roll-toast.nat-1 .roll-toast-total {
-  color: #f44336;
-  text-shadow: 0 0 10px rgba(244, 67, 54, 0.5);
+  color: var(--color-danger);
+  text-shadow: 0 0 10px var(--color-danger-glow);
 }
 
 /* Close button */
@@ -211,7 +269,7 @@ button:hover {
   right: 10px;
   background: none;
   border: none;
-  color: #666;
+  color: var(--text-muted);
   font-size: 16px;
   cursor: pointer;
   padding: 4px;
@@ -221,8 +279,73 @@ button:hover {
 }
 
 .roll-toast-close:hover {
-  color: #e0e0e0;
+  color: var(--text-primary);
   background: none;
+}
+
+/* ===== ADVANTAGE/DISADVANTAGE TOAST STYLES ===== */
+.roll-toast.advantage {
+  border-color: var(--color-success);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 20px var(--color-success-glow);
+}
+
+.roll-toast.disadvantage {
+  border-color: var(--color-danger);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 20px var(--color-danger-glow);
+}
+
+.adv-disadv-roll {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.roll-mode-indicator {
+  font-size: 0.75rem;
+  font-weight: bold;
+  padding: 2px 8px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.roll-mode-indicator.advantage {
+  background: var(--color-success);
+  color: var(--bg-dark);
+}
+
+.roll-mode-indicator.disadvantage {
+  background: var(--color-danger);
+  color: #fff;
+}
+
+.roll-pair {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.roll-pair .roll-value {
+  font-size: 1.8rem;
+  font-weight: bold;
+}
+
+.roll-pair .roll-value.used {
+  color: var(--color-primary);
+}
+
+.roll-pair .roll-value.dropped {
+  color: var(--text-muted);
+  font-size: 1.4rem;
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+.roll-separator {
+  color: var(--text-muted);
+  font-size: 1.2rem;
 }
 
 /* Character Sheet Styles */
@@ -239,18 +362,87 @@ button:hover {
 }
 
 .card {
-  background: #333;
+  background: var(--bg-card);
   padding: 20px;
   border-radius: 8px;
-  border: 1px solid #444;
+  border: 1px solid var(--border-color);
 }
 
 .card h3 {
-  color: #4ecdc4;
+  color: var(--color-primary);
   margin-bottom: 15px;
   text-align: center;
-  border-bottom: 1px solid #444;
+  border-bottom: 1px solid var(--border-color);
   padding-bottom: 10px;
+}
+
+/* ===== ADVANTAGE/DISADVANTAGE TOGGLE ===== */
+.adv-disadv-card {
+  background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-dark) 100%);
+  border: 2px solid var(--color-primary);
+}
+
+.roll-mode-toggle {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.roll-mode-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 8px;
+  background: var(--bg-input);
+  border: 2px solid var(--border-light);
+  border-radius: 8px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.85rem;
+}
+
+.roll-mode-btn i {
+  font-size: 1.4rem;
+}
+
+.roll-mode-btn:hover {
+  background: var(--border-color);
+  color: var(--text-primary);
+}
+
+/* Normal mode active */
+.roll-mode-btn[data-mode="normal"].active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--bg-dark);
+  box-shadow: var(--glow-primary);
+}
+
+/* Advantage active - green/gold theme */
+.roll-mode-btn[data-mode="advantage"].active {
+  background: var(--color-success);
+  border-color: var(--color-success);
+  color: var(--bg-dark);
+  box-shadow: 0 0 15px var(--color-success-glow);
+}
+
+/* Disadvantage active - red theme */
+.roll-mode-btn[data-mode="disadvantage"].active {
+  background: var(--color-danger);
+  border-color: var(--color-danger);
+  color: #fff;
+  box-shadow: 0 0 15px rgba(196, 30, 58, 0.5);
+}
+
+.roll-mode-description {
+  text-align: center;
+  margin-top: 12px;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  font-style: italic;
 }
 
 .form-group {
@@ -261,7 +453,7 @@ button:hover {
   display: block;
   margin-bottom: 5px;
   font-weight: bold;
-  color: #4ecdc4;
+  color: var(--color-primary);
 }
 
 .form-row {
@@ -273,6 +465,80 @@ button:hover {
 .form-row .form-group {
   flex: 1;
   min-width: 150px;
+}
+
+/* HP Bar and Slider */
+.hp-bar-container {
+  margin: 15px 0;
+  padding: 10px;
+  background: var(--bg-input);
+  border-radius: 8px;
+  border: 1px solid var(--border-light);
+}
+
+.hp-bar-container progress {
+  width: 100%;
+  height: 20px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--border-color);
+  border: none;
+}
+
+.hp-bar-container progress::-webkit-progress-bar {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+
+.hp-bar-container progress::-webkit-progress-value {
+  background: linear-gradient(90deg, var(--color-danger) 0%, var(--color-primary) 50%, #4caf50 100%);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.hp-bar-container progress::-moz-progress-bar {
+  background: linear-gradient(90deg, var(--color-danger) 0%, var(--color-primary) 50%, #4caf50 100%);
+  border-radius: 4px;
+}
+
+.hp-bar-container input[type="range"] {
+  width: 100%;
+  margin: 10px 0 5px 0;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 8px;
+  background: var(--border-color);
+  border-radius: 4px;
+  outline: none;
+}
+
+.hp-bar-container input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  cursor: pointer;
+  box-shadow: 0 0 5px var(--color-primary-glow);
+}
+
+.hp-bar-container input[type="range"]::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 0 5px var(--color-primary-glow);
+}
+
+.hp-display {
+  display: block;
+  text-align: center;
+  font-weight: bold;
+  color: var(--color-primary);
+  font-size: 1.1rem;
 }
 
 .abilities-grid {
@@ -297,7 +563,7 @@ button:hover {
   width: 50px;
   text-align: center;
   font-weight: bold;
-  color: #ff6b6b;
+  color: var(--color-danger-light);
   margin-top: 5px;
 }
 
@@ -321,7 +587,7 @@ button:hover {
 
 .total {
   font-weight: bold;
-  color: #4ecdc4;
+  color: var(--color-primary);
 }
 
 .saves-table, .skills-table, .abilities-table {
@@ -333,17 +599,17 @@ button:hover {
 .saves-table th, .saves-table td, .skills-table th, .skills-table td, .abilities-table th, .abilities-table td {
   padding: 8px;
   text-align: left;
-  border: 1px solid #444;
+  border: 1px solid var(--border-light);
 }
 
 .saves-table th, .skills-table th, .abilities-table th {
-  background: #333;
+  background: var(--bg-input);
   font-weight: bold;
-  color: #4ecdc4;
+  color: var(--color-primary);
 }
 
 .saves-table td, .skills-table td, .abilities-table td {
-  background: #2a2a2a;
+  background: var(--border-color);
 }
 
 .abilities-table input[type="number"] {
@@ -355,10 +621,149 @@ button:hover {
   margin: 0;
 }
 
+/* ===== DEATH SAVES TRACKER ===== */
+.death-saves-section {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.death-saves-section h4 {
+  color: var(--color-primary);
+  margin-bottom: 1rem;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.death-saves-section h4 .fa-skull {
+  color: var(--color-danger);
+}
+
+.death-saves-tracker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.death-saves-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  background: var(--border-color);
+  border-radius: 6px;
+}
+
+.death-saves-label {
+  font-weight: 600;
+  font-size: 0.9rem;
+  min-width: 80px;
+}
+
+.death-saves-row.successes .death-saves-label {
+  color: #22c55e;
+}
+
+.death-saves-row.failures .death-saves-label {
+  color: var(--color-danger);
+}
+
+.death-saves-checkboxes {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.death-save-checkbox {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 3px solid var(--border-color);
+  background: var(--bg-card);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.death-save-checkbox.success {
+  border-color: #22c55e;
+}
+
+.death-save-checkbox.failure {
+  border-color: var(--color-danger);
+}
+
+.death-save-checkbox:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 10px rgba(240, 165, 0, 0.3);
+}
+
+.death-save-checkbox.success:checked {
+  background: #22c55e;
+  border-color: #22c55e;
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.5);
+}
+
+.death-save-checkbox.failure:checked {
+  background: var(--color-danger);
+  border-color: var(--color-danger);
+  box-shadow: 0 0 12px rgba(196, 30, 58, 0.5);
+}
+
+.death-save-checkbox:checked::after {
+  content: '✓';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.death-saves-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+  justify-content: center;
+}
+
+.death-save-roll,
+.death-saves-actions .reset-btn {
+  flex: 0 0 auto;
+  width: 160px;
+  padding: 0.6rem 1rem !important;
+  font-size: 0.9rem !important;
+  justify-content: center;
+}
+
+.reset-btn {
+  background: transparent;
+  border: 1px solid var(--text-muted);
+  border-radius: 4px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.reset-btn:hover {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+  box-shadow: 0 0 8px rgba(196, 30, 58, 0.3);
+}
+
 /* D20 Roll Button Styles */
 .roll-btn {
   background: transparent;
-  border: 1px solid #4ecdc4;
+  border: 1px solid var(--color-primary);
   border-radius: 4px;
   padding: 4px 8px;
   cursor: pointer;
@@ -368,20 +773,21 @@ button:hover {
   justify-content: center;
   width: auto;
   min-width: 32px;
-  color: #e0e0e0;
+  color: var(--text-primary);
   margin: 0;
   font-size: 14px;
   font-weight: normal;
 }
 
 .roll-btn:hover {
-  background: #4ecdc4;
+  background: var(--color-primary);
   transform: scale(1.1);
-  color: #1a1a1a;
+  color: var(--bg-card);
+  box-shadow: var(--glow-primary);
 }
 
 .roll-btn:hover .fa-dice-d20 {
-  color: #1a1a1a;
+  color: var(--bg-card);
 }
 
 .roll-btn:active {
@@ -395,14 +801,30 @@ button:hover {
 
 .roll-btn .fa-dice-d20 {
   font-size: 16px;
-  color: #4ecdc4;
+  color: var(--color-primary);
   transition: color 0.2s ease;
+}
+
+/* Add spacing when d20 icon is followed by text */
+.attack-btn .fa-dice-d20,
+.death-save-roll .fa-dice-d20 {
+  margin-right: 0.4em;
+}
+
+/* Add spacing for damage button icon */
+.damage-btn .fa-burst {
+  margin-right: 0.4em;
+}
+
+/* Add spacing for reset button icon */
+.reset-btn .fa-rotate-left {
+  margin-right: 0.3em;
 }
 
 /* Large d20 icon for result display */
 .fa-dice-d20.roll-icon-large {
   font-size: 24px;
-  color: #4ecdc4;
+  color: var(--color-primary);
   margin-right: 6px;
   vertical-align: middle;
 }
@@ -410,10 +832,10 @@ button:hover {
 /* Alternative: If using Font Awesome later, uncomment this:
 .roll-btn .fa-dice-d20 {
   font-size: 16px;
-  color: #4ecdc4;
+  color: var(--color-primary);
 }
 .roll-btn:hover .fa-dice-d20 {
-  color: #1a1a1a;
+  color: var(--bg-card);
 }
 */
 
@@ -424,9 +846,9 @@ button:hover {
 
 .equipment-section textarea {
   width: 100%;
-  background: #333;
-  color: #e0e0e0;
-  border: 1px solid #444;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  border: 1px solid var(--border-light);
   padding: 10px;
   border-radius: 4px;
   font-family: inherit;
@@ -439,9 +861,9 @@ button:hover {
 }
 
 .tab-button {
-  background: #333;
-  color: #e0e0e0;
-  border: 1px solid #444;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  border: 1px solid var(--border-light);
   padding: 10px 20px;
   cursor: pointer;
   flex: 1;
@@ -449,19 +871,19 @@ button:hover {
 }
 
 .tab-button.active {
-  background: #4ecdc4;
-  color: #1a1a1a;
+  background: var(--color-primary);
+  color: var(--bg-card);
 }
 
 .tab-button:hover {
-  background: #444;
+  background: var(--border-light);
 }
 
 .tab-content {
-  background: #2a2a2a;
+  background: var(--border-color);
   padding: 20px;
   border-radius: 8px;
-  border: 1px solid #444;
+  border: 1px solid var(--border-light);
 }
 
 .tab-pane {
@@ -478,9 +900,9 @@ button:hover {
 }
 
 .combat-tab-button {
-  background: #333;
-  color: #e0e0e0;
-  border: 1px solid #444;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  border: 1px solid var(--border-light);
   padding: 8px 16px;
   cursor: pointer;
   flex: 1;
@@ -488,19 +910,19 @@ button:hover {
 }
 
 .combat-tab-button.active {
-  background: #4ecdc4;
-  color: #1a1a1a;
+  background: var(--color-primary);
+  color: var(--bg-card);
 }
 
 .combat-tab-button:hover {
-  background: #444;
+  background: var(--border-light);
 }
 
 .combat-tab-content {
-  background: #2a2a2a;
+  background: var(--border-color);
   padding: 15px;
   border-radius: 8px;
-  border: 1px solid #444;
+  border: 1px solid var(--border-light);
 }
 
 .combat-tab-pane {
@@ -520,25 +942,25 @@ button:hover {
 .spell-slots-table th, .spell-slots-table td {
   padding: 8px;
   text-align: center;
-  border: 1px solid #444;
+  border: 1px solid var(--border-light);
 }
 
 .spell-slots-table th {
-  background: #333;
+  background: var(--bg-input);
   font-weight: bold;
-  color: #4ecdc4;
+  color: var(--color-primary);
 }
 
 .spell-slots-table td {
-  background: #2a2a2a;
+  background: var(--border-color);
 }
 
 .spell-slots-table input {
   width: 60px;
   text-align: center;
-  background: #333;
-  color: #e0e0e0;
-  border: 1px solid #444;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  border: 1px solid var(--border-light);
   padding: 4px;
 }
 
@@ -556,9 +978,9 @@ button:hover {
 .weapon-item input {
   flex: 1;
   padding: 8px;
-  background: #333;
-  color: #e0e0e0;
-  border: 1px solid #444;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  border: 1px solid var(--border-light);
   border-radius: 4px;
 }
 
@@ -567,47 +989,90 @@ button:hover {
   width: 100%;
   border-collapse: collapse;
   margin-top: 10px;
+  table-layout: fixed;
 }
 
 .weapons-table th, .weapons-table td {
   padding: 8px;
   text-align: left;
-  border: 1px solid #444;
+  border: 1px solid var(--border-light);
+  vertical-align: middle;
 }
 
 .weapons-table th {
-  background: #333;
+  background: var(--bg-input);
   font-weight: bold;
-  color: #4ecdc4;
+  color: var(--color-primary);
   font-size: 0.85rem;
 }
 
 .weapons-table td {
-  background: #2a2a2a;
+  background: var(--border-color);
+}
+
+/* Column widths - adjusted for 6 columns including Bonus */
+.weapons-table th:nth-child(1),
+.weapons-table td:nth-child(1) {
+  width: 20%; /* Name */
+}
+
+.weapons-table th:nth-child(2),
+.weapons-table td:nth-child(2) {
+  width: 10%; /* Attack ability */
+}
+
+.weapons-table th:nth-child(3),
+.weapons-table td:nth-child(3) {
+  width: 8%; /* Bonus */
+}
+
+.weapons-table th:nth-child(4),
+.weapons-table td:nth-child(4) {
+  width: 15%; /* Damage */
+}
+
+.weapons-table th:nth-child(5),
+.weapons-table td:nth-child(5) {
+  width: 17%; /* Properties */
+}
+
+.weapons-table th:nth-child(6),
+.weapons-table td:nth-child(6) {
+  width: 30%; /* Actions */
+}
+
+/* Weapon bonus input */
+.weapon-bonus-input {
+  width: 100% !important;
+  text-align: center;
+  padding: 6px !important;
 }
 
 .weapons-table input[type="text"] {
   width: 100%;
   padding: 6px;
-  background: #333;
-  color: #e0e0e0;
-  border: 1px solid #444;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  border: 1px solid var(--border-light);
   border-radius: 4px;
 }
 
 .weapons-table select {
   padding: 6px;
-  background: #333;
-  color: #e0e0e0;
-  border: 1px solid #444;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  border: 1px solid var(--border-light);
   border-radius: 4px;
   width: 100%;
 }
 
 .weapon-actions {
-  display: flex;
-  gap: 6px;
-  flex-wrap: nowrap;
+  text-align: center;
+}
+
+.weapon-actions .roll-btn {
+  display: inline-flex;
+  margin: 2px;
 }
 
 /* Attack and Damage Buttons */
@@ -615,36 +1080,37 @@ button:hover {
   font-size: 0.75rem;
   padding: 6px 10px;
   white-space: nowrap;
-  color: #e0e0e0;
+  color: var(--text-primary);
   margin: 0;
   font-weight: normal;
 }
 
 .attack-btn {
-  border-color: #4ecdc4;
+  border-color: var(--color-primary);
 }
 
 .attack-btn:hover {
-  background: #4ecdc4;
-  color: #1a1a1a;
+  background: var(--color-primary);
+  color: var(--bg-card);
+  box-shadow: var(--glow-primary);
 }
 
 .damage-btn {
-  border-color: #ff6b6b;
+  border-color: var(--color-danger-light);
 }
 
 .damage-btn:hover {
-  background: #ff6b6b;
-  color: #1a1a1a;
+  background: var(--color-danger-light);
+  color: var(--bg-card);
 }
 
 .damage-btn .fa-burst {
-  color: #ff6b6b;
+  color: var(--color-danger-light);
   margin-right: 4px;
 }
 
 .damage-btn:hover .fa-burst {
-  color: #1a1a1a;
+  color: var(--bg-card);
 }
 
 /* Inline Roll Group (for initiative, spell attack) */
@@ -670,11 +1136,11 @@ button:hover {
 .spell-damage-section {
   margin-top: 20px;
   padding-top: 15px;
-  border-top: 1px solid #444;
+  border-top: 1px solid var(--border-light);
 }
 
 .spell-damage-section h4 {
-  color: #4ecdc4;
+  color: var(--color-primary);
   margin-bottom: 10px;
 }
 
@@ -695,7 +1161,7 @@ button:hover {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.8);
+  background: rgba(0, 0, 0, 0.85);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -711,8 +1177,8 @@ button:hover {
 }
 
 .modal-content {
-  background: #2a2a2a;
-  border: 2px solid #4ecdc4;
+  background: var(--border-color);
+  border: 2px solid var(--color-primary);
   border-radius: 12px;
   padding: 24px;
   min-width: 380px;
@@ -720,6 +1186,7 @@ button:hover {
   position: relative;
   transform: scale(0.9);
   transition: transform 0.3s ease;
+  box-shadow: 0 0 30px var(--color-primary-glow);
 }
 
 .modal-overlay.show .modal-content {
@@ -732,7 +1199,7 @@ button:hover {
   right: 16px;
   background: none;
   border: none;
-  color: #666;
+  color: var(--text-muted);
   font-size: 24px;
   cursor: pointer;
   padding: 4px;
@@ -742,12 +1209,12 @@ button:hover {
 }
 
 .modal-close:hover {
-  color: #e0e0e0;
+  color: var(--text-primary);
   background: none;
 }
 
 .modal-content h3 {
-  color: #4ecdc4;
+  color: var(--color-primary);
   margin-bottom: 20px;
   text-align: center;
   font-size: 1.3rem;
@@ -760,17 +1227,47 @@ button:hover {
 }
 
 .damage-section {
-  background: #333;
+  background: var(--bg-input);
   padding: 12px;
   border-radius: 8px;
 }
 
 .damage-section label {
   display: block;
-  color: #4ecdc4;
+  color: var(--color-primary);
   font-size: 0.85rem;
   margin-bottom: 8px;
   font-weight: bold;
+}
+
+/* Ability Modifier Section */
+.ability-mod-section {
+  background: rgba(240, 165, 0, 0.1);
+  border: 1px solid var(--color-primary);
+}
+
+.ability-mod-display {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.1rem;
+}
+
+#damage-ability-name {
+  color: var(--color-primary);
+  font-weight: bold;
+}
+
+.ability-mod-value {
+  color: var(--color-primary);
+  font-size: 1.3rem;
+  font-weight: bold;
+}
+
+.auto-label {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-style: italic;
 }
 
 .dice-input-group {
@@ -781,7 +1278,7 @@ button:hover {
 }
 
 .dice-input-group span {
-  color: #888;
+  color: var(--text-muted);
   font-size: 1.1rem;
 }
 
@@ -795,8 +1292,8 @@ button:hover {
 .dice-type-select {
   width: 70px;
   padding: 8px;
-  background: #444;
-  color: #e0e0e0;
+  background: var(--border-light);
+  color: var(--text-primary);
   border: 1px solid #555;
   border-radius: 4px;
   font-size: 1.1rem;
@@ -811,12 +1308,12 @@ button:hover {
 
 .extra-dice-label {
   font-size: 0.8rem !important;
-  color: #666 !important;
+  color: var(--text-muted) !important;
 }
 
 .crit-section {
-  background: #3a2a2a;
-  border: 1px solid #ff6b6b;
+  background: rgba(196, 30, 58, 0.15);
+  border: 1px solid var(--color-danger);
 }
 
 .crit-section label {
@@ -834,12 +1331,12 @@ button:hover {
 }
 
 .crit-label {
-  color: #ff6b6b;
+  color: var(--color-danger);
   font-weight: bold;
 }
 
 .damage-preview {
-  background: #222;
+  background: var(--bg-dark);
   padding: 12px;
   border-radius: 8px;
   text-align: center;
@@ -847,11 +1344,11 @@ button:hover {
 }
 
 .damage-preview span:first-child {
-  color: #888;
+  color: var(--text-muted);
 }
 
 #damage-preview-text {
-  color: #4ecdc4;
+  color: var(--color-primary);
   font-weight: bold;
   font-size: 1.2rem;
 }
@@ -864,18 +1361,19 @@ button:hover {
   width: 100%;
   padding: 14px;
   font-size: 1.1rem;
-  background: #ff6b6b;
+  background: var(--color-danger);
   border: none;
   border-radius: 8px;
   color: #fff;
   font-weight: bold;
   cursor: pointer;
-  transition: background 0.3s, transform 0.2s;
+  transition: background 0.3s, transform 0.2s, box-shadow 0.2s;
 }
 
 .modal-roll-btn:hover {
-  background: #ff5252;
+  background: var(--color-danger-light);
   transform: scale(1.02);
+  box-shadow: 0 0 15px rgba(196, 30, 58, 0.5);
 }
 
 .modal-roll-btn:active {
@@ -900,24 +1398,24 @@ button:hover {
 
 .damage-dice-display .fa-burst {
   font-size: 24px;
-  color: #ff6b6b;
+  color: var(--color-danger-light);
 }
 
 .damage-rolls {
   font-size: 1rem;
-  color: #888;
+  color: var(--text-muted);
   font-family: monospace;
 }
 
 .damage-dice-notation {
   font-size: 0.8rem;
-  color: #666;
+  color: var(--text-muted);
   margin-top: 4px;
 }
 
 .calc {
   font-weight: bold;
-  color: #ff6b6b;
+  color: var(--color-danger-light);
 }
 
 #save-char-btn {
@@ -933,10 +1431,10 @@ button:hover {
 }
 
 .spellcasting-info {
-  background: #333;
+  background: var(--bg-input);
   padding: 15px;
   border-radius: 8px;
-  border: 1px solid #444;
+  border: 1px solid var(--border-light);
 }
 
 .spellcasting-info .form-row {
@@ -948,15 +1446,15 @@ button:hover {
 }
 
 .cantrips-section {
-  background: #333;
+  background: var(--bg-input);
   padding: 15px;
   border-radius: 8px;
-  border: 1px solid #444;
+  border: 1px solid var(--border-light);
 }
 
 .cantrips-section h4 {
   margin: 0 0 15px 0;
-  color: #4ecdc4;
+  color: var(--color-primary);
 }
 
 .cantrips-list {
@@ -967,9 +1465,9 @@ button:hover {
 
 .cantrips-list input {
   padding: 8px;
-  background: #2a2a2a;
-  color: #e0e0e0;
-  border: 1px solid #444;
+  background: var(--border-color);
+  color: var(--text-primary);
+  border: 1px solid var(--border-light);
   border-radius: 4px;
 }
 
@@ -980,15 +1478,15 @@ button:hover {
 }
 
 .spell-level {
-  background: #333;
+  background: var(--bg-input);
   padding: 15px;
   border-radius: 8px;
-  border: 1px solid #444;
+  border: 1px solid var(--border-light);
 }
 
 .spell-level h5 {
   margin: 0 0 10px 0;
-  color: #4ecdc4;
+  color: var(--color-primary);
   font-size: 1.1em;
 }
 
@@ -1006,9 +1504,9 @@ button:hover {
 
 .prepared-spells-list input {
   padding: 6px;
-  background: #2a2a2a;
-  color: #e0e0e0;
-  border: 1px solid #444;
+  background: var(--border-color);
+  color: var(--text-primary);
+  border: 1px solid var(--border-light);
   border-radius: 4px;
   font-size: 0.9em;
 }
@@ -1033,4 +1531,186 @@ button:hover {
   .prepared-spells-list {
     grid-template-columns: 1fr;
   }
+}
+
+/* ===== CHARACTER SHEET HEADER WITH SAVE BUTTON ===== */
+.sheet-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.sheet-header h2 {
+  margin: 0;
+}
+
+.sheet-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.sheet-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem 1rem;
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: auto;
+  margin: 0;
+}
+
+.export-btn {
+  background: var(--bg-input);
+  color: var(--text-primary);
+  border-color: var(--color-primary);
+}
+
+.export-btn:hover {
+  background: var(--color-primary);
+  color: var(--bg-darkest);
+  box-shadow: 0 2px 8px var(--color-primary-glow);
+}
+
+.import-btn {
+  background: var(--bg-input);
+  color: var(--text-primary);
+  border-color: var(--border-light);
+}
+
+.import-btn:hover {
+  background: var(--border-color);
+  border-color: var(--color-primary);
+}
+
+.save-sheet-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: var(--color-primary);
+  color: var(--bg-darkest);
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: auto;
+  margin: 0;
+}
+
+.save-sheet-btn:hover {
+  background: var(--color-primary-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px var(--color-primary-glow);
+}
+
+.save-sheet-btn:active {
+  transform: translateY(0);
+}
+
+.save-sheet-btn.saved {
+  background: var(--color-success) !important;
+  border-color: var(--color-success) !important;
+  box-shadow: 0 0 15px var(--color-success-glow);
+  animation: pulse-success 0.3s ease-out;
+}
+
+@keyframes pulse-success {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.save-sheet-btn i {
+  font-size: 1rem;
+}
+
+/* Export Modal */
+.export-modal-content {
+  max-width: 450px;
+}
+
+.export-modal-body {
+  padding: 10px 0;
+}
+
+.export-warning {
+  display: flex;
+  gap: 12px;
+  padding: 15px;
+  background: rgba(240, 165, 0, 0.15);
+  border: 1px solid var(--color-primary);
+  border-radius: 8px;
+  margin-bottom: 15px;
+}
+
+.export-warning i {
+  color: var(--color-primary);
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.export-warning p {
+  margin: 0;
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+.export-info {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin-bottom: 20px;
+}
+
+.export-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.confirm-export-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: var(--color-primary);
+  color: var(--bg-darkest);
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.confirm-export-btn:hover {
+  background: var(--color-primary-hover);
+  box-shadow: 0 2px 8px var(--color-primary-glow);
+}
+
+.cancel-export-btn {
+  padding: 10px 20px;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cancel-export-btn:hover {
+  background: var(--border-color);
 }
