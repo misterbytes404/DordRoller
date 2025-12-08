@@ -93,14 +93,28 @@ The easiest and most secure way to deploy. No server management, automatic HTTPS
 4. Select **your forked repository** (not the original)
 5. Railway auto-detects the Dockerfile and builds
 6. Add a **PostgreSQL** plugin from the Railway dashboard
-7. Set environment variables in Railway:
-   - `AUTH_ENABLED` = `true` or `false`
-   - `JWT_SECRET` = (generate a random string)
-   - `TWITCH_CLIENT_ID` = (if using Twitch login)
-   - `TWITCH_CLIENT_SECRET` = (if using Twitch login)
-   - `TWITCH_REDIRECT_URI` = `https://your-app.railway.app/auth/twitch/callback`
+7. Set environment variables in Railway (see below)
 
 Railway automatically provides `DATABASE_URL` when you add PostgreSQL.
+
+#### Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `AUTH_ENABLED` | Yes | `true` to require login, `false` for anonymous |
+| `JWT_SECRET` | If auth enabled | Random string for session tokens. Generate: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
+| `TWITCH_CLIENT_ID` | For Twitch login | From [Twitch Developer Console](https://dev.twitch.tv/console) |
+| `TWITCH_CLIENT_SECRET` | For Twitch login | From Twitch Developer Console |
+| `TWITCH_REDIRECT_URI` | For Twitch login | `https://your-app.railway.app/auth/twitch/callback` |
+
+**🔑 Quick Start (Username/Password only):**
+- Set `AUTH_ENABLED=true`
+- Set `JWT_SECRET` to a random string
+- Done! Users can register with username/password immediately.
+
+**🎮 Adding Twitch Login (Optional):**
+- Follow the [Twitch OAuth Setup](#-twitch-oauth-setup) section below
+- Add `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET`, and `TWITCH_REDIRECT_URI`
 
 **Alternatives:** [Render](https://render.com/), [Fly.io](https://fly.io/) — all have free tiers.
 
