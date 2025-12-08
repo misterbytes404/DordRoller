@@ -79,51 +79,11 @@ Full **D&D 5e character sheet** with automatic calculations:
 
 ---
 
-## 🚀 Deployment Options
+## 🚀 Deployment
 
-Dord Roller supports multiple deployment methods. Choose the one that fits your needs:
+### 🚂 Railway (Recommended)
 
-| Method | Difficulty | Best For |
-|--------|------------|----------|
-| **Docker Compose** | ⭐ Easy | Local, VPS, self-hosting |
-| **Railway** | ⭐ Easiest | Cloud hosting, zero DevOps |
-| **VPS (Manual)** | ⭐⭐ Medium | Full control, learning |
-| **Local Development** | ⭐⭐ Medium | Contributing, testing |
-
-### 🐳 Option 1: Docker Compose (Recommended)
-
-The simplest way to run Dord Roller. One command starts everything.
-
-**Prerequisites:** [Docker Desktop](https://www.docker.com/products/docker-desktop/) or Docker Engine
-
-```bash
-# Clone the repository
-git clone https://github.com/misterbytes404/DordRoller.git
-cd DordRoller
-
-# Configure environment
-cp backend/.env.example .env
-# Edit .env with your settings (see Environment Configuration below)
-
-# Start everything
-docker-compose up -d
-
-# View logs
-docker-compose logs -f
-
-# Stop
-docker-compose down
-```
-
-**Access the app:** http://localhost:3000
-
-**Included services:**
-- Dord Roller application (backend + all clients)
-- PostgreSQL 16 database (data persisted in Docker volume)
-
-### 🚂 Option 2: Railway (Cloud PaaS)
-
-Deploy to the cloud with zero configuration.
+The easiest and most secure way to deploy. No server management, automatic HTTPS, no port forwarding required.
 
 1. Fork this repository to your GitHub account
 2. Go to [Railway](https://railway.app/) and create an account
@@ -140,81 +100,17 @@ Deploy to the cloud with zero configuration.
 
 Railway automatically provides `DATABASE_URL` when you add PostgreSQL.
 
-### 🖥️ Option 3: VPS Deployment
+**Alternatives:** [Render](https://render.com/), [Fly.io](https://fly.io/) — all have free tiers.
 
-For full control on your own server (DigitalOcean, Linode, Vultr, etc.).
+---
 
-#### With Docker (Recommended)
+## 🔧 Development Setup
 
-```bash
-# SSH into your VPS
-ssh user@your-server
+For contributing or testing features locally.
 
-# Install Docker (Ubuntu/Debian)
-curl -fsSL https://get.docker.com | sh
-sudo usermod -aG docker $USER
-
-# Clone and configure
-git clone https://github.com/misterbytes404/DordRoller.git
-cd DordRoller
-cp backend/.env.example .env
-nano .env  # Configure your settings
-
-# Start with Docker Compose
-docker-compose up -d
-```
-
-#### Without Docker
+**Prerequisites:** Node.js >= 18, pnpm, PostgreSQL 14+
 
 ```bash
-# Install Node.js 20
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-sudo apt install -y nodejs
-
-# Install PostgreSQL
-sudo apt install -y postgresql postgresql-contrib
-sudo -u postgres createdb dordroller
-
-# Install pnpm
-npm install -g pnpm
-
-# Clone and setup
-git clone https://github.com/misterbytes404/DordRoller.git
-cd DordRoller
-
-# Install dependencies
-cd backend && pnpm install
-cd ../gm-client && pnpm install && pnpm build
-cd ../player-client && pnpm install && pnpm build
-cd ..
-
-# Configure environment
-cp backend/.env.example backend/.env
-nano backend/.env
-
-# Install PM2 for process management
-npm install -g pm2
-
-# Start the backend
-cd backend
-pm2 start server.js --name dordroller
-pm2 save
-pm2 startup
-```
-
-**Recommended:** Use [Caddy](https://caddyserver.com/) or Nginx as a reverse proxy for HTTPS.
-
-### 💻 Option 4: Local Development
-
-For contributing or testing features.
-
-**Prerequisites:**
-- Node.js >= 18.0.0
-- pnpm (`npm install -g pnpm`)
-- PostgreSQL 14+
-
-```bash
-# Clone the repository
 git clone https://github.com/misterbytes404/DordRoller.git
 cd DordRoller
 
@@ -224,37 +120,69 @@ cd ../gm-client && pnpm install
 cd ../player-client && pnpm install
 cd ..
 
-# Set up PostgreSQL
-# Create a database named 'dordroller'
-
 # Configure environment
 cp backend/.env.example backend/.env
-# Edit backend/.env with your database credentials
+# Edit with your local PostgreSQL credentials
 
-# Start all services (in separate terminals)
+# Start services (separate terminals)
 cd backend && pnpm dev        # Terminal 1
 cd gm-client && pnpm dev      # Terminal 2
 cd player-client && pnpm dev  # Terminal 3
 ```
 
-**Access:**
-- Landing Page: http://localhost:3000
-- GM Client: http://localhost:5173 (Vite dev server)
-- Player Client: http://localhost:5175 (Vite dev server)
+**Access:** http://localhost:3000 (backend), http://localhost:5173 (GM), http://localhost:5175 (Player)
+
+---
+
+## 🐳 Self-Hosting (Advanced)
+
+> ⚠️ **Warning:** Self-hosting requires exposing your server to the public internet. This involves port forwarding, firewall configuration, and security hardening. Only recommended for experienced users.
+
+<details>
+<summary>Docker Compose (VPS or Local)</summary>
+
+```bash
+git clone https://github.com/misterbytes404/DordRoller.git
+cd DordRoller
+cp backend/.env.example .env
+# Edit .env with your settings
+
+docker-compose up -d
+```
+
+Access: http://localhost:3000 (or your server IP)
+
+</details>
+
+<details>
+<summary>Manual VPS Setup</summary>
+
+```bash
+# Install Node.js 20, PostgreSQL, pnpm
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs postgresql postgresql-contrib
+npm install -g pnpm
+
+# Clone and build
+git clone https://github.com/misterbytes404/DordRoller.git
+cd DordRoller
+cd backend && pnpm install
+cd ../gm-client && pnpm install && pnpm build
+cd ../player-client && pnpm install && pnpm build
+
+# Configure and run with PM2
+cp backend/.env.example backend/.env
+npm install -g pm2
+cd backend && pm2 start server.js --name dordroller
+```
+
+**Required:** Reverse proxy (Caddy/Nginx) for HTTPS.
+
+</details>
 
 ### ⚠️ Incompatible Platforms
 
-Traditional shared hosting (GoDaddy, Bluehost, HostGator, cPanel) is **not supported** because:
-- No Node.js runtime (or very limited)
-- No WebSocket support (Socket.io requires persistent connections)
-- No PostgreSQL (usually MySQL only)
-- No Docker support
-
-**Budget-friendly alternatives:**
-- [Railway](https://railway.app/) - Free tier available
-- [Render](https://render.com/) - Free tier available
-- [Fly.io](https://fly.io/) - Free tier available
-- Oracle Cloud Free Tier - Free VPS forever
+Traditional shared hosting (GoDaddy, Bluehost, cPanel) is **not supported** — no Node.js, WebSocket, or PostgreSQL.
 
 ---
 
