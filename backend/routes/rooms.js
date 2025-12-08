@@ -38,8 +38,8 @@ router.post('/rooms', optionalAuth, async (req, res) => {
     const { name, code } = req.body;
     const ownerId = req.user?.id || null;
     
-    // If code provided, sanitize it
-    const sanitizedCode = code 
+    // If code provided, sanitize it (with type validation)
+    const sanitizedCode = (code && typeof code === 'string')
       ? code.toUpperCase().replace(/[^A-Z0-9]/g, '').substring(0, 8)
       : null;
     
@@ -85,8 +85,8 @@ router.put('/rooms/:id/name', optionalAuth, async (req, res) => {
 router.put('/rooms/:id/code', optionalAuth, async (req, res) => {
   try {
     const { newCode } = req.body;
-    if (!newCode) {
-      return res.status(400).json({ error: 'New code is required' });
+    if (!newCode || typeof newCode !== 'string') {
+      return res.status(400).json({ error: 'New code is required and must be a string' });
     }
     
     // Check if user is GM (when auth is enabled)
@@ -116,8 +116,8 @@ router.put('/rooms/:id/code', optionalAuth, async (req, res) => {
 router.post('/rooms/join', optionalAuth, async (req, res) => {
   try {
     const { code, role } = req.body;
-    if (!code) {
-      return res.status(400).json({ error: 'Room code is required' });
+    if (!code || typeof code !== 'string') {
+      return res.status(400).json({ error: 'Room code is required and must be a string' });
     }
     
     const sanitizedCode = code.toUpperCase().replace(/[^A-Z0-9]/g, '');

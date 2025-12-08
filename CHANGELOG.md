@@ -10,6 +10,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Local Account Authentication** — Username/password registration
+  - OWASP-compliant password requirements (8+ chars, upper, lower, number, special)
+  - Secure password hashing with bcrypt (12 salt rounds)
+  - Account lockout after 5 failed login attempts (15-minute lockout)
+  - Rate limiting on auth endpoints (10 attempts per 15 minutes)
+  - Input validation with `validator` library (XSS/SQL injection prevention)
+  - Timing-safe password comparison to prevent enumeration attacks
+  - Generic error messages to prevent user enumeration
+- **Dual Authentication** — Users can choose Twitch SSO or local account
+  - Same JWT-based session management for both auth types
+  - Unified `/auth/me` endpoint returns user data regardless of auth type
+  - `/auth/register` for new local accounts
+  - `/auth/login` for local account authentication
 - **Twitch OAuth Authentication** — SSO login via Twitch
   - Users sign in with Twitch account
   - Automatic account creation on first login

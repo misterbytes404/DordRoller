@@ -45,16 +45,40 @@ export async function initializeDatabase() {
     }
 
     await client.query(`
-      -- Users table (Twitch SSO accounts)
+      -- Users table (supports both Twitch SSO and local accounts)
       CREATE TABLE IF NOT EXISTS users (
         id VARCHAR(16) PRIMARY KEY,
-        twitch_id VARCHAR(50) UNIQUE NOT NULL,
-        twitch_username VARCHAR(100) NOT NULL,
-        display_name VARCHAR(100),
-        avatar_url TEXT,
+        
+        -- Auth type: 'twitch' or 'local'
+        auth_type VARCHAR(20) NOT NULL DEFAULT 'local' CHECK (auth_type IN ('twitch', 'local')),
+        
+        -- Twitch OAuth fields (null for local accounts)
+        twitch_id VARCHAR(50) UNIQUE,
+        
+        -- Local auth fields (null for Twitch accounts)
+        username VARCHAR(50) UNIQUE,
+        password_hash VARCHAR(255),
+        
+        -- Common fields
+        display_name VARCHAR(100) NOT NULL,
         email VARCHAR(255),
+        avatar_url TEXT,
+        
+        -- Security fields
+        failed_login_attempts INTEGER DEFAULT 0,
+        locked_until TIMESTAMP,
+        password_reset_token VARCHAR(64),
+        password_reset_expires TIMESTAMP,
+        
+        -- Timestamps
         created_at TIMESTAMP DEFAULT NOW(),
-        last_login TIMESTAMP DEFAULT NOW()
+        last_login TIMESTAMP DEFAULT NOW(),
+        
+        -- Ensure either twitch_id OR username is set based on auth_type
+        CONSTRAINT valid_auth_fields CHECK (
+          (auth_type = 'twitch' AND twitch_id IS NOT NULL) OR
+          (auth_type = 'local' AND username IS NOT NULL AND password_hash IS NOT NULL)
+        )
       );
 
       -- Rooms table with hex IDs and naming

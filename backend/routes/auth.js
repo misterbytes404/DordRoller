@@ -72,14 +72,64 @@ function generateToken(user) {
   return jwt.sign(
     {
       id: user.id,
-      twitchId: user.twitch_id,
-      username: user.twitch_username,
+      authType: user.auth_type,
+      twitchId: user.twitch_id || null,
+      username: user.username || null,
       displayName: user.display_name,
       avatarUrl: user.avatar_url
     },
     JWT_SECRET,
     { expiresIn: JWT_EXPIRES_IN }
   );
+}
+
+// ==================== RATE LIMITING ====================
+// Simple in-memory rate limiter (use Redis in production for distributed systems)
+const rateLimitStore = new Map();
+const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+const MAX_REQUESTS_PER_WINDOW = 100; // General requests
+const MAX_AUTH_ATTEMPTS_PER_WINDOW = 10; // Auth-specific (stricter)
+
+function rateLimit(key, maxRequests = MAX_REQUESTS_PER_WINDOW) {
+  const now = Date.now();
+  const windowStart = now - RATE_LIMIT_WINDOW_MS;
+  
+  // Get or create entry
+  let entry = rateLimitStore.get(key);
+  if (!entry || entry.windowStart < windowStart) {
+    entry = { windowStart: now, count: 0 };
+  }
+  
+  entry.count++;
+  rateLimitStore.set(key, entry);
+  
+  // Clean up old entries periodically
+  if (Math.random() < 0.01) {
+    for (const [k, v] of rateLimitStore.entries()) {
+      if (v.windowStart < windowStart) {
+        rateLimitStore.delete(k);
+      }
+    }
+  }
+  
+  return entry.count <= maxRequests;
+}
+
+/**
+ * Rate limiting middleware for auth endpoints
+ */
+function authRateLimiter(req, res, next) {
+  const ip = req.ip || req.connection.remoteAddress || 'unknown';
+  const key = `auth:${ip}`;
+  
+  if (!rateLimit(key, MAX_AUTH_ATTEMPTS_PER_WINDOW)) {
+    return res.status(429).json({ 
+      error: 'Too many authentication attempts. Please try again later.',
+      retryAfter: Math.ceil(RATE_LIMIT_WINDOW_MS / 1000)
+    });
+  }
+  
+  next();
 }
 
 /**
@@ -198,6 +248,126 @@ router.get('/twitch/callback', async (req, res) => {
   }
 });
 
+// ==================== LOCAL AUTHENTICATION ====================
+
+/**
+ * POST /auth/register
+ * Register a new local account
+ * 
+ * Body: { username, email, password, confirmPassword }
+ * 
+ * Security measures:
+ * - Rate limiting to prevent brute force
+ * - Password strength validation (OWASP compliant)
+ * - Email format validation
+ * - Username format validation
+ * - SQL injection prevention (parameterized queries in User model)
+ * - XSS prevention (validator library sanitization)
+ */
+router.post('/register', authRateLimiter, async (req, res) => {
+  try {
+    const { username, email, password, confirmPassword } = req.body;
+
+    // Validate required fields
+    if (!username || !email || !password || !confirmPassword) {
+      return res.status(400).json({ 
+        error: 'All fields are required: username, email, password, confirmPassword' 
+      });
+    }
+
+    // Validate password match
+    if (password !== confirmPassword) {
+      return res.status(400).json({ 
+        error: 'Passwords do not match' 
+      });
+    }
+
+    // Register user (User model handles all validation)
+    const user = await User.register(username, email, password);
+
+    // Generate JWT token
+    const token = generateToken(user);
+
+    res.status(201).json({
+      success: true,
+      message: 'Account created successfully',
+      user: {
+        id: user.id,
+        username: user.username,
+        displayName: user.display_name,
+        email: user.email,
+        authType: user.auth_type
+      },
+      token
+    });
+
+  } catch (err) {
+    console.error('Registration error:', err);
+    
+    // Handle specific validation errors
+    if (err.message.includes('already') || 
+        err.message.includes('Invalid') || 
+        err.message.includes('Password must') ||
+        err.message.includes('Username must')) {
+      return res.status(400).json({ error: err.message });
+    }
+    
+    res.status(500).json({ error: 'Registration failed. Please try again.' });
+  }
+});
+
+/**
+ * POST /auth/login
+ * Login with local account
+ * 
+ * Body: { usernameOrEmail, password }
+ * 
+ * Security measures:
+ * - Rate limiting to prevent brute force
+ * - Generic error messages to prevent user enumeration
+ * - Timing-safe password comparison (bcrypt)
+ */
+router.post('/login', authRateLimiter, async (req, res) => {
+  try {
+    const { usernameOrEmail, password } = req.body;
+
+    // Validate required fields
+    if (!usernameOrEmail || !password) {
+      return res.status(400).json({ 
+        error: 'Username/email and password are required' 
+      });
+    }
+
+    // Attempt login (User model handles validation)
+    const user = await User.login(usernameOrEmail, password);
+
+    // Generate JWT token
+    const token = generateToken(user);
+
+    res.json({
+      success: true,
+      message: 'Login successful',
+      user: {
+        id: user.id,
+        username: user.username,
+        displayName: user.display_name,
+        email: user.email,
+        authType: user.auth_type,
+        avatarUrl: user.avatar_url
+      },
+      token
+    });
+
+  } catch (err) {
+    console.error('Login error:', err);
+    
+    // Always return generic error to prevent user enumeration
+    res.status(401).json({ 
+      error: 'Invalid credentials' 
+    });
+  }
+});
+
 /**
  * GET /auth/me
  * Get current authenticated user's full profile
@@ -215,10 +385,14 @@ router.get('/me', authenticateToken, async (req, res) => {
     res.json({
       user: {
         id: user.id,
-        twitchId: user.twitch_id,
-        username: user.twitch_username,
+        authType: user.auth_type,
+        twitchId: user.twitch_id || null,
+        twitchUsername: user.twitch_username || null,
+        username: user.username || null,
+        email: user.email || null,
         displayName: user.display_name,
         avatarUrl: user.avatar_url,
+        emailVerified: user.email_verified,
         createdAt: user.created_at
       },
       rooms

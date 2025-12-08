@@ -72,7 +72,8 @@ Full **D&D 5e character sheet** with automatic calculations:
 | **Frontend** | Vite, ES6+ JavaScript, CSS3 |
 | **Real-time** | WebSocket (Socket.io) |
 | **Database** | PostgreSQL (with JSONB for character sheets) |
-| **Authentication** | Twitch OAuth 2.0 |
+| **Authentication** | Twitch OAuth 2.0, Local accounts (bcrypt) |
+| **Security** | bcrypt, validator, rate limiting, OWASP compliance |
 | **Data** | D&D 5e Bestiary JSON ([5etools](https://github.com/5etools-mirror-3/5etools-src) format) |
 
 ---
@@ -217,6 +218,55 @@ When `AUTH_ENABLED=true`:
 
 ---
 
+## 🔑 Local Account Authentication
+
+As an alternative to Twitch OAuth, users can create local accounts with username and password.
+
+### Password Requirements (OWASP Compliant)
+
+- Minimum 8 characters
+- At least one uppercase letter
+- At least one lowercase letter
+- At least one number
+- At least one special character (`!@#$%^&*()_+-=[]{}|;':",./<>?`)
+
+### Security Features
+
+| Feature | Implementation |
+|---------|----------------|
+| **Password Hashing** | bcrypt with 12 salt rounds |
+| **Account Lockout** | 5 failed attempts = 15-minute lockout |
+| **Rate Limiting** | 10 auth attempts per 15 minutes per IP |
+| **Input Validation** | `validator` library (XSS/SQL injection prevention) |
+| **Timing Attack Prevention** | Constant-time password comparison |
+| **User Enumeration Prevention** | Generic error messages |
+
+### API Endpoints
+
+```bash
+# Register a new account
+POST /auth/register
+Content-Type: application/json
+{
+  "username": "adventurer",
+  "email": "user@example.com",
+  "password": "MySecure123!",
+  "confirmPassword": "MySecure123!"
+}
+
+# Login with existing account
+POST /auth/login
+Content-Type: application/json
+{
+  "usernameOrEmail": "adventurer",
+  "password": "MySecure123!"
+}
+```
+
+Both endpoints return a JWT token on success, which is used identically to Twitch OAuth tokens.
+
+---
+
 ## 🗺️ Roadmap
 
 | Phase | Status | Description |
@@ -241,6 +291,12 @@ When `AUTH_ENABLED=true`:
   - JWT session management
   - User accounts tied to Twitch IDs
   - Room membership tracking
+- [x] 🔑 **Local Authentication** — Username/password accounts
+  - OWASP-compliant password requirements
+  - bcrypt password hashing (12 rounds)
+  - Account lockout after failed attempts
+  - Rate limiting on auth endpoints
+  - Input validation & sanitization
 - [x] 🏷️ **Room Naming** — Named rooms for easier management
 - [x] 🐘 **PostgreSQL Database** — Character sheet persistence
   - Connection pool with SSL for production deployment
