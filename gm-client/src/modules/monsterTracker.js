@@ -1,12 +1,103 @@
-// MVP 2: Monster tracking functionality (UI-focused, in-memory with bestiary integration)
+// MVP 2: Monster tracking functionality (UI-focused with database persistence)
+
+// API base URL
+const API_URL = 'http://localhost:3000/api';
 
 export class MonsterTracker {
   constructor() {
-    this.monsters = [];  // In-memory storage (replace with DB later)
+    this.monsters = [];  // In-memory cache
+    this.roomId = null;  // Database room ID for persistence
     this.editingId = null;  // Track which monster is being edited
     this.bestiary = new Map();  // Map of name -> bestiary monster data
     this.debounceTimer = null;  // For debouncing search input
     this.init();
+  }
+
+  // Set the room ID (called when GM joins room)
+  setRoomId(roomId) {
+    this.roomId = roomId;
+    console.log('MonsterTracker: Room ID set to', roomId);
+    if (roomId) {
+      this.loadFromDatabase();
+    }
+  }
+
+  // Load monsters from database
+  async loadFromDatabase() {
+    if (!this.roomId) return;
+    
+    try {
+      const response = await fetch(`${API_URL}/rooms/${this.roomId}/monsters`);
+      if (response.ok) {
+        this.monsters = await response.json();
+        console.log(`Loaded ${this.monsters.length} monsters from database`);
+        this.renderMonsters();
+      }
+    } catch (error) {
+      console.error('Failed to load monsters from database:', error);
+    }
+  }
+
+  // Save monster to database
+  async saveMonsterToDb(monster) {
+    if (!this.roomId) {
+      console.warn('No room ID - monster not persisted');
+      return monster;
+    }
+    
+    try {
+      if (monster.id && typeof monster.id === 'string' && monster.id.length === 16) {
+        // Update existing monster (has hex ID)
+        const response = await fetch(`${API_URL}/monsters/${monster.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(monster)
+        });
+        if (response.ok) {
+          return await response.json();
+        }
+      } else {
+        // Create new monster
+        const response = await fetch(`${API_URL}/monsters`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ roomId: this.roomId, ...monster })
+        });
+        if (response.ok) {
+          return await response.json();
+        }
+      }
+    } catch (error) {
+      console.error('Failed to save monster to database:', error);
+    }
+    return monster;
+  }
+
+  // Delete monster from database
+  async deleteMonsterFromDb(monsterId) {
+    if (!this.roomId) return;
+    
+    try {
+      await fetch(`${API_URL}/monsters/${monsterId}`, { method: 'DELETE' });
+    } catch (error) {
+      console.error('Failed to delete monster from database:', error);
+    }
+  }
+
+  // Quick HP save (for combat slider)
+  async saveHpToDb(monsterId, hp) {
+    if (!this.roomId) return;
+    
+    try {
+      await fetch(`${API_URL}/monsters/${monsterId}/hp`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hp })
+      });
+      console.log(`Monster ${monsterId} HP updated to ${hp}`);
+    } catch (error) {
+      console.error('Failed to save monster HP:', error);
+    }
   }
 
   async init() {
@@ -106,22 +197,138 @@ export class MonsterTracker {
 
     matches.forEach(name => {
       const li = document.createElement('li');
-      li.textContent = `${name} (${this.bestiary.get(name).source})`;
-      li.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); document.getElementById('search-results').style.display = 'none'; this.selectMonster(name); });
+      const monster = this.bestiary.get(name);
+      
+      // Create monster info span
+      const infoSpan = document.createElement('span');
+      infoSpan.className = 'monster-search-info';
+      infoSpan.textContent = `${name} (${monster.source})`;
+      infoSpan.addEventListener('click', (e) => { 
+        e.preventDefault(); 
+        e.stopPropagation(); 
+        document.getElementById('search-results').style.display = 'none'; 
+        this.selectMonster(name); 
+      });
+      
+      // Create quick-add button
+      const quickAddBtn = document.createElement('button');
+      quickAddBtn.className = 'quick-add-btn';
+      quickAddBtn.innerHTML = '<i class="fa-solid fa-plus"></i>';
+      quickAddBtn.title = 'Quick add to encounter';
+      quickAddBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.quickAddFromBestiary(name);
+      });
+      
+      li.appendChild(infoSpan);
+      li.appendChild(quickAddBtn);
       resultsList.appendChild(li);
     });
     resultsList.style.display = 'block';
+  }
+
+  // Quick add monster directly from bestiary search results
+  async quickAddFromBestiary(name) {
+    const monster = this.bestiary.get(name);
+    if (!monster) return;
+    
+    // Parse monster data from 5etools format
+    let typeStr = '';
+    if (typeof monster.type === 'string') {
+      typeStr = monster.type;
+    } else if (monster.type && monster.type.type) {
+      typeStr = monster.type.type;
+      if (monster.type.tags && monster.type.tags.length > 0) {
+        typeStr += ` (${monster.type.tags.join(', ')})`;
+      }
+    }
+    
+    const size = Array.isArray(monster.size) ? monster.size[0] : (monster.size || 'M');
+    
+    let ac = 10;
+    if (monster.ac) {
+      if (Array.isArray(monster.ac)) {
+        ac = typeof monster.ac[0] === 'object' ? monster.ac[0].ac : monster.ac[0];
+      } else if (typeof monster.ac === 'object') {
+        ac = monster.ac.ac || 10;
+      } else {
+        ac = monster.ac;
+      }
+    }
+    
+    const hp = monster.hp ? monster.hp.average : 1;
+    
+    const monsterData = {
+      name: monster.name,
+      source: monster.source,
+      type: `${size} ${typeStr}`,
+      ac: ac,
+      hp: hp,
+      hpMax: hp,
+      hitDice: monster.hp ? monster.hp.formula : '',
+      speed: this.formatSpeed(monster.speed),
+      abilities: {
+        str: monster.str || 10,
+        dex: monster.dex || 10,
+        con: monster.con || 10,
+        int: monster.int || 10,
+        wis: monster.wis || 10,
+        cha: monster.cha || 10
+      },
+      skills: this.formatSkills(monster.skill),
+      senses: this.formatSenses(monster),
+      languages: monster.languages ? monster.languages.join(', ') : '',
+      cr: this.formatCR(monster.cr),
+      actions: this.formatActions(monster.action),
+      reactions: this.formatActions(monster.reaction),
+      displayOrder: this.monsters.length
+    };
+    
+    // Save to database and add to list
+    const savedMonster = await this.saveMonsterToDb(monsterData);
+    this.monsters.push(savedMonster);
+    this.renderMonsters();
+    
+    // Keep search open for adding more monsters
+    console.log(`Quick added: ${monster.name}`);
   }
 
   selectMonster(name) {
     const monster = this.bestiary.get(name);
     if (!monster) return;
 
+    // Handle type - can be string or object with type/tags
+    let typeStr = '';
+    if (typeof monster.type === 'string') {
+      typeStr = monster.type;
+    } else if (monster.type && monster.type.type) {
+      typeStr = monster.type.type;
+      if (monster.type.tags && monster.type.tags.length > 0) {
+        typeStr += ` (${monster.type.tags.join(', ')})`;
+      }
+    }
+    
+    // Handle size - can be string or array
+    const size = Array.isArray(monster.size) ? monster.size[0] : (monster.size || 'M');
+    
+    // Handle AC - can be number, object, or array
+    let ac = 10;
+    if (monster.ac) {
+      if (Array.isArray(monster.ac)) {
+        ac = typeof monster.ac[0] === 'object' ? monster.ac[0].ac : monster.ac[0];
+      } else if (typeof monster.ac === 'object') {
+        ac = monster.ac.ac || 10;
+      } else {
+        ac = monster.ac;
+      }
+    }
+
     // Populate form fields
     document.getElementById('monster-name').value = monster.name;
     document.getElementById('monster-source').value = monster.source;
-    document.getElementById('monster-type').value = `${monster.size ? monster.size[0] : 'M'} ${monster.type.type} (${monster.type.tags ? monster.type.tags.join(', ') : ''})`;
-    document.getElementById('monster-ac').value = monster.ac ? monster.ac[0] : 10 + Math.floor(((monster.dex || 10) - 10) / 2);
+    document.getElementById('monster-type').value = `${size} ${typeStr}`;
+    document.getElementById('monster-ac').value = ac;
     document.getElementById('monster-hp').value = monster.hp ? monster.hp.average : 1;
     document.getElementById('monster-hp-max').value = monster.hp ? monster.hp.average : 1;
     document.getElementById('monster-hit-dice').value = monster.hp ? monster.hp.formula : '';
@@ -133,9 +340,9 @@ export class MonsterTracker {
     document.getElementById('monster-wis').value = monster.wis || 10;
     document.getElementById('monster-cha').value = monster.cha || 10;
     document.getElementById('monster-skills').value = this.formatSkills(monster.skill);
-    document.getElementById('monster-senses').value = `passive Perception ${monster.passive || 10}`;
+    document.getElementById('monster-senses').value = this.formatSenses(monster);
     document.getElementById('monster-languages').value = monster.languages ? monster.languages.join(', ') : '';
-    document.getElementById('monster-cr').value = monster.cr || '';
+    document.getElementById('monster-cr').value = this.formatCR(monster.cr);
     document.getElementById('monster-actions').value = this.formatActions(monster.action);
     document.getElementById('monster-reactions').value = this.formatActions(monster.reaction);
 
@@ -143,6 +350,25 @@ export class MonsterTracker {
     document.getElementById('search-results').style.display = 'none';
     document.getElementById('monster-search').value = '';
     this.searchMonsters('');
+  }
+
+  // Format senses from 5etools format
+  formatSenses(monster) {
+    const parts = [];
+    if (monster.senses) {
+      parts.push(...monster.senses);
+    }
+    parts.push(`passive Perception ${monster.passive || 10}`);
+    return parts.join(', ');
+  }
+
+  // Format CR (can be string, number, or object)
+  formatCR(cr) {
+    if (!cr) return '';
+    if (typeof cr === 'object') {
+      return cr.cr || '';
+    }
+    return String(cr);
   }
 
   formatSpeed(speed) {
@@ -166,7 +392,7 @@ export class MonsterTracker {
     return actions.map(action => `${action.name}: ${action.entries ? action.entries.map(entry => entry.replace(/{@atk mw}/g, 'Melee Weapon Attack:').replace(/{@atk rw}/g, 'Ranged Weapon Attack:').replace(/{@atk ms}/g, 'Melee Spell Attack:').replace(/{@atk rs}/g, 'Ranged Spell Attack:').replace(/{@hit ([+-]?\d+)}/g, '+$1 to hit').replace(/{@h}/g, 'Hit:').replace(/{@m}/g, 'Miss:').replace(/{@hom}/g, 'Hit or Miss:').replace(/{@damage ([^}]+)}/g, '$1').replace(/{@dc (\d+)(?:\|([^}]+))?}/g, (match, dc, display) => 'DC ' + (display || dc)).replace(/{@condition ([^}]+)}/g, '$1').replace(/{@skill ([^}]+)}/g, '$1').replace(/{@spell ([^}]+)}/g, '$1').replace(/{@recharge (\d+)}/g, '(recharge $1)').replace(/{@[^}]+}/g, '')).join(' ') : ''}`).join('\n');
   }
 
-  addMonster() {
+  async addMonster() {
     const name = document.getElementById('monster-name').value.trim();
     const source = document.getElementById('monster-source').value.trim();
     const type = document.getElementById('monster-type').value.trim();
@@ -188,8 +414,7 @@ export class MonsterTracker {
     const actions = document.getElementById('monster-actions').value.trim();
     const reactions = document.getElementById('monster-reactions').value.trim();
 
-    const monster = {
-      id: Date.now(),
+    const monsterData = {
       name,
       source,
       type,
@@ -204,9 +429,13 @@ export class MonsterTracker {
       languages,
       cr,
       actions,
-      reactions
+      reactions,
+      displayOrder: this.monsters.length
     };
-    this.monsters.push(monster);
+    
+    // Save to database and get back the monster with hex ID
+    const savedMonster = await this.saveMonsterToDb(monsterData);
+    this.monsters.push(savedMonster);
     this.renderMonsters();
     this.clearForm();
   }
@@ -320,10 +549,20 @@ export class MonsterTracker {
         const slider = card.querySelector(`#hp-slider-${monster.id}`);
         const bar = card.querySelector(`#hp-bar-${monster.id}`);
         const hpText = card.querySelector(`#hp-text-${monster.id}`);
+        
+        // Debounce timer for HP saves
+        let hpSaveTimer = null;
+        
         slider.addEventListener('input', () => {
           monster.hp = Math.max(0, Math.min(monster.hpMax, Number(slider.value)));
           bar.value = monster.hp;
           hpText.textContent = monster.hp;
+          
+          // Debounce HP save to database (500ms after last change)
+          clearTimeout(hpSaveTimer);
+          hpSaveTimer = setTimeout(() => {
+            this.saveHpToDb(monster.id, monster.hp);
+          }, 500);
         });
       }
     });
@@ -358,7 +597,7 @@ export class MonsterTracker {
     this.renderMonsters();
   }
 
-  saveEdit(id) {
+  async saveEdit(id) {
     const monster = this.monsters.find(m => m.id == id);
     if (!monster) return;
 
@@ -399,6 +638,9 @@ export class MonsterTracker {
     monster.actions = newActions;
     monster.reactions = newReactions;
 
+    // Save to database
+    await this.saveMonsterToDb(monster);
+
     this.editingId = null;
     this.renderMonsters();
   }
@@ -408,7 +650,9 @@ export class MonsterTracker {
     this.renderMonsters();
   }
 
-  deleteMonster(id) {
+  async deleteMonster(id) {
+    // Delete from database first
+    await this.deleteMonsterFromDb(id);
     this.monsters = this.monsters.filter(m => m.id != id);
     this.renderMonsters();
   }

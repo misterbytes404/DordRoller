@@ -1,23 +1,167 @@
-import sqlite3 from 'sqlite3';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
+import pg from 'pg';
+import dotenv from 'dotenv';
+import crypto from 'crypto';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+dotenv.config();
 
-const dbPath = join(__dirname, '..', 'data', 'dord-roller.db');
+const { Pool } = pg;
 
-export const db = new sqlite3.Database(dbPath, (err) => {
+// Create connection pool
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  // SSL required for Railway, optional for local
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+});
+
+// Generate hex ID (8 characters = 4 bytes = 32 bits of randomness)
+export function generateHexId(length = 8) {
+  return crypto.randomBytes(length / 2).toString('hex').toUpperCase();
+}
+
+// Test connection
+pool.query('SELECT NOW()', (err, res) => {
   if (err) {
-    console.error('Error opening database:', err);
+    console.error('❌ Database connection failed:', err.message);
   } else {
-    console.log('Connected to SQLite database');
-    initializeDatabase();
+    console.log('✅ Connected to PostgreSQL at', res.rows[0].now);
   }
 });
 
-function initializeDatabase() {
-  // Database schema initialization will go here (MVP 2)
+// Initialize database schema
+export async function initializeDatabase() {
+  const client = await pool.connect();
+  try {
+    // Drop old tables if they exist (development only - remove for production)
+    if (process.env.NODE_ENV !== 'production') {
+      await client.query(`
+        DROP TABLE IF EXISTS room_players CASCADE;
+        DROP TABLE IF EXISTS character_sheets CASCADE;
+        DROP TABLE IF EXISTS monsters CASCADE;
+        DROP TABLE IF EXISTS rooms CASCADE;
+        DROP TABLE IF EXISTS users CASCADE;
+        DROP TABLE IF EXISTS players CASCADE;
+      `);
+      console.log('🗑️ Dropped old tables for schema update');
+    }
+
+    await client.query(`
+      -- Users table (Twitch SSO accounts)
+      CREATE TABLE IF NOT EXISTS users (
+        id VARCHAR(16) PRIMARY KEY,
+        twitch_id VARCHAR(50) UNIQUE NOT NULL,
+        twitch_username VARCHAR(100) NOT NULL,
+        display_name VARCHAR(100),
+        avatar_url TEXT,
+        email VARCHAR(255),
+        created_at TIMESTAMP DEFAULT NOW(),
+        last_login TIMESTAMP DEFAULT NOW()
+      );
+
+      -- Rooms table with hex IDs and naming
+      CREATE TABLE IF NOT EXISTS rooms (
+        id VARCHAR(16) PRIMARY KEY,
+        code VARCHAR(8) UNIQUE NOT NULL,
+        name VARCHAR(100) NOT NULL DEFAULT 'Unnamed Room',
+        owner_id VARCHAR(16) REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMP DEFAULT NOW(),
+        last_active TIMESTAMP DEFAULT NOW()
+      );
+
+      -- User-Room membership (tracks who's in each room and their role)
+      CREATE TABLE IF NOT EXISTS room_members (
+        id VARCHAR(16) PRIMARY KEY,
+        room_id VARCHAR(16) REFERENCES rooms(id) ON DELETE CASCADE,
+        user_id VARCHAR(16) REFERENCES users(id) ON DELETE CASCADE,
+        role VARCHAR(20) DEFAULT 'player' CHECK (role IN ('gm', 'player')),
+        joined_at TIMESTAMP DEFAULT NOW(),
+        last_active TIMESTAMP DEFAULT NOW(),
+        UNIQUE(room_id, user_id)
+      );
+
+      -- Character sheets belong to ROOMS (not users)
+      -- Any player in the room can select/edit any character
+      CREATE TABLE IF NOT EXISTS character_sheets (
+        id VARCHAR(16) PRIMARY KEY,
+        room_id VARCHAR(16) REFERENCES rooms(id) ON DELETE CASCADE,
+        name VARCHAR(100),
+        class VARCHAR(50),
+        level INTEGER DEFAULT 1,
+        race VARCHAR(50),
+        alignment VARCHAR(50),
+        background VARCHAR(100),
+        xp INTEGER DEFAULT 0,
+        hp INTEGER DEFAULT 0,
+        max_hp INTEGER DEFAULT 0,
+        ac INTEGER DEFAULT 10,
+        speed VARCHAR(20),
+        hit_dice VARCHAR(20),
+        player_name VARCHAR(100),
+        assigned_user_id VARCHAR(16) REFERENCES users(id) ON DELETE SET NULL,
+        
+        -- Complex data as JSONB
+        abilities JSONB DEFAULT '{"str":10,"dex":10,"con":10,"int":10,"wis":10,"cha":10}',
+        manual_mods JSONB DEFAULT '{"str":0,"dex":0,"con":0,"int":0,"wis":0,"cha":0}',
+        saving_throws JSONB DEFAULT '{"str":false,"dex":false,"con":false,"int":false,"wis":false,"cha":false}',
+        skills JSONB DEFAULT '{}',
+        weapons JSONB DEFAULT '[]',
+        spellcasting JSONB DEFAULT '{}',
+        spell_slots JSONB DEFAULT '[]',
+        equipment TEXT DEFAULT '',
+        features TEXT DEFAULT '',
+        spells TEXT DEFAULT '',
+        
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      );
+
+      -- Monsters belong to ROOMS (tracked by GM)
+      CREATE TABLE IF NOT EXISTS monsters (
+        id VARCHAR(16) PRIMARY KEY,
+        room_id VARCHAR(16) REFERENCES rooms(id) ON DELETE CASCADE,
+        name VARCHAR(100) NOT NULL,
+        source VARCHAR(50),
+        type VARCHAR(100),
+        ac INTEGER DEFAULT 10,
+        hp INTEGER DEFAULT 1,
+        hp_max INTEGER DEFAULT 1,
+        hit_dice VARCHAR(50),
+        speed VARCHAR(100),
+        
+        -- Ability scores as JSONB
+        abilities JSONB DEFAULT '{"str":10,"dex":10,"con":10,"int":10,"wis":10,"cha":10}',
+        
+        -- Other monster data
+        skills TEXT,
+        senses TEXT,
+        languages TEXT,
+        cr VARCHAR(10),
+        actions TEXT,
+        reactions TEXT,
+        
+        -- Display order for initiative tracking
+        display_order INTEGER DEFAULT 0,
+        
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      );
+
+      -- Indexes for faster lookups
+      CREATE INDEX IF NOT EXISTS idx_users_twitch_id ON users(twitch_id);
+      CREATE INDEX IF NOT EXISTS idx_rooms_owner_id ON rooms(owner_id);
+      CREATE INDEX IF NOT EXISTS idx_room_members_user_id ON room_members(user_id);
+      CREATE INDEX IF NOT EXISTS idx_room_members_room_id ON room_members(room_id);
+      CREATE INDEX IF NOT EXISTS idx_character_sheets_room_id ON character_sheets(room_id);
+      CREATE INDEX IF NOT EXISTS idx_character_sheets_assigned_user ON character_sheets(assigned_user_id);
+      CREATE INDEX IF NOT EXISTS idx_monsters_room_id ON monsters(room_id);
+      CREATE INDEX IF NOT EXISTS idx_rooms_code ON rooms(code);
+    `);
+    console.log('✅ Database schema initialized (Twitch SSO, room membership)');
+  } catch (err) {
+    console.error('❌ Failed to initialize database schema:', err.message);
+  } finally {
+    client.release();
+  }
 }
 
-export default db;
+export { pool };
+export default pool;

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dord Roller - D&D Companion</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="landing-container">
+    <header class="landing-header">
+      <div class="logo">
+        <i class="fa-solid fa-dice-d20 logo-icon"></i>
+        <h1>Dord Roller</h1>
+      </div>
+      <p class="tagline">Your D&D 5e Companion for Dice Rolling & Character Management</p>
+    </header>
+
+    <main class="client-selection">
+      <h2>Choose Your Role</h2>
+      
+      <div class="client-cards">
+        <!-- GM Client Card -->
+        <a href="http://localhost:5173" class="client-card gm-card">
+          <div class="card-icon">
+            <i class="fa-solid fa-crown"></i>
+          </div>
+          <h3>Game Master</h3>
+          <p class="card-description">
+            Create and manage game rooms, track monsters, view player stats, 
+            and control the flow of your campaign.
+          </p>
+          <ul class="feature-list">
+            <li><i class="fa-solid fa-check"></i> Create/Join Rooms</li>
+            <li><i class="fa-solid fa-check"></i> Monster Tracker with 5e Bestiary</li>
+            <li><i class="fa-solid fa-check"></i> Player Overview Dashboard</li>
+            <li><i class="fa-solid fa-check"></i> Dice Rolling & Roll Log</li>
+          </ul>
+          <div class="card-action">
+            <span>Enter as GM</span>
+            <i class="fa-solid fa-arrow-right"></i>
+          </div>
+        </a>
+
+        <!-- Player Client Card -->
+        <a href="http://localhost:5175" class="client-card player-card">
+          <div class="card-icon">
+            <i class="fa-solid fa-user-group"></i>
+          </div>
+          <h3>Player</h3>
+          <p class="card-description">
+            Join your GM's room, manage your character sheet, roll dice, 
+            and sync your stats in real-time.
+          </p>
+          <ul class="feature-list">
+            <li><i class="fa-solid fa-check"></i> Join Rooms with Code</li>
+            <li><i class="fa-solid fa-check"></i> Full Character Sheet</li>
+            <li><i class="fa-solid fa-check"></i> Auto-calculated Stats</li>
+            <li><i class="fa-solid fa-check"></i> Dice Rolling with Modifiers</li>
+          </ul>
+          <div class="card-action">
+            <span>Enter as Player</span>
+            <i class="fa-solid fa-arrow-right"></i>
+          </div>
+        </a>
+      </div>
+    </main>
+
+    <footer class="landing-footer">
+      <p>Made for <strong>DarkLord_VT</strong> by <strong>Mister Bytes</strong> and the <strong>Shacolyte Community</strong></p>
+      <p><a href="/landing/credits.html"><i class="fa-solid fa-users"></i> Credits</a> &bull; <a href="https://github.com/misterbytes404/DordRoller" target="_blank" rel="noopener"><i class="fa-brands fa-github"></i> GitHub</a></p>
+    </footer>
+  </div>
+</body>
+</html>

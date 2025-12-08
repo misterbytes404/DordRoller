@@ -1,0 +1,315 @@
+/* Dord Roller Landing Page Styles */
+
+:root {
+  /* Backgrounds - matching clients */
+  --bg-darkest: #0d0d0d;
+  --bg-dark: #1a1a1a;
+  --bg-card: #1e1e1e;
+  --bg-card-hover: #252525;
+  --bg-elevated: #2a2a2a;
+  
+  /* Primary - Amber/Gold (DarkLord's eyes) */
+  --color-primary: #f0a500;
+  --color-primary-hover: #d49200;
+  --color-primary-glow: rgba(240, 165, 0, 0.4);
+  
+  /* Secondary - Deep Red (Villain accent) */
+  --color-danger: #c41e3a;
+  --color-danger-glow: rgba(196, 30, 58, 0.4);
+  
+  /* Success - Green */
+  --color-success: #4caf50;
+  --color-success-glow: rgba(76, 175, 80, 0.5);
+  
+  /* Text */
+  --text-primary: #e0e0e0;
+  --text-secondary: #888;
+  --text-muted: #666;
+  
+  /* Borders */
+  --border-color: #333;
+  --border-subtle: #2a2a2a;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: var(--bg-darkest);
+  min-height: 100vh;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.landing-container {
+  max-width: 900px;
+  width: 100%;
+  text-align: center;
+}
+
+/* Header */
+.landing-header {
+  margin-bottom: 40px;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.logo-icon {
+  font-size: 3.5rem;
+  color: var(--color-primary);
+  animation: dice-glow 2s ease-in-out infinite;
+}
+
+@keyframes dice-glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 10px var(--color-primary-glow));
+  }
+  50% {
+    filter: drop-shadow(0 0 20px var(--color-primary)) drop-shadow(0 0 30px var(--color-primary-glow));
+  }
+}
+
+.logo h1 {
+  font-size: 3rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  text-shadow: 0 0 20px var(--color-primary-glow);
+}
+
+.tagline {
+  font-size: 1.1rem;
+  color: var(--text-secondary);
+  font-weight: 300;
+}
+
+/* Client Selection */
+.client-selection h2 {
+  font-size: 1.5rem;
+  color: var(--text-secondary);
+  margin-bottom: 30px;
+  font-weight: 400;
+}
+
+.client-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 30px;
+  margin-bottom: 40px;
+}
+
+/* Client Cards */
+.client-card {
+  background: var(--bg-card);
+  border: 2px solid var(--border-color);
+  border-radius: 16px;
+  padding: 30px;
+  text-decoration: none;
+  color: var(--text-primary);
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.client-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, transparent, var(--card-accent), transparent);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.client-card:hover {
+  transform: translateY(-8px);
+  background: var(--bg-card-hover);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+}
+
+.client-card:hover::before {
+  opacity: 1;
+}
+
+/* GM Card specific */
+.gm-card {
+  --card-accent: var(--color-primary);
+}
+
+.gm-card:hover {
+  border-color: var(--color-primary);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 30px var(--color-primary-glow);
+}
+
+.gm-card .card-icon {
+  color: var(--color-primary);
+}
+
+.gm-card .card-action {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
+  color: var(--bg-darkest);
+}
+
+/* Player Card specific */
+.player-card {
+  --card-accent: var(--color-success);
+}
+
+.player-card:hover {
+  border-color: var(--color-success);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 30px var(--color-success-glow);
+}
+
+.player-card .card-icon {
+  color: var(--color-success);
+}
+
+.player-card .card-action {
+  background: linear-gradient(135deg, var(--color-success), #3d8b40);
+  color: var(--bg-darkest);
+}
+
+/* Card Elements */
+.card-icon {
+  font-size: 3rem;
+  margin-bottom: 15px;
+  transition: transform 0.3s ease;
+}
+
+.client-card:hover .card-icon {
+  transform: scale(1.1);
+}
+
+.client-card h3 {
+  font-size: 1.8rem;
+  margin-bottom: 10px;
+  font-weight: 600;
+}
+
+.card-description {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  margin-bottom: 20px;
+}
+
+.feature-list {
+  list-style: none;
+  text-align: left;
+  width: 100%;
+  margin-bottom: 25px;
+}
+
+.feature-list li {
+  padding: 8px 0;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.feature-list li i {
+  color: var(--color-success);
+  font-size: 0.8rem;
+}
+
+.card-action {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 1rem;
+  margin-top: auto;
+  transition: all 0.3s ease;
+}
+
+.client-card:hover .card-action {
+  transform: scale(1.05);
+}
+
+.card-action i {
+  transition: transform 0.3s ease;
+}
+
+.client-card:hover .card-action i {
+  transform: translateX(5px);
+}
+
+/* Footer */
+.landing-footer {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-top: 20px;
+}
+
+.landing-footer p {
+  margin: 8px 0;
+}
+
+.landing-footer i {
+  color: var(--color-primary);
+}
+
+.landing-footer a {
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.landing-footer a:hover {
+  color: var(--color-primary-hover);
+  text-decoration: underline;
+}
+
+.landing-footer .fa-github {
+  margin-right: 5px;
+}
+
+.copyright {
+  margin-top: 15px !important;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+/* Responsive */
+@media (max-width: 700px) {
+  .logo h1 {
+    font-size: 2rem;
+  }
+  
+  .logo-icon {
+    font-size: 2.5rem;
+  }
+  
+  .tagline {
+    font-size: 0.95rem;
+  }
+  
+  .client-cards {
+    grid-template-columns: 1fr;
+  }
+  
+  .client-card {
+    padding: 25px;
+  }
+}

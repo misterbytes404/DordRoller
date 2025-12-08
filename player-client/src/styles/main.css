@@ -20,6 +20,14 @@
   --color-success: #4caf50;
   --color-success-glow: rgba(76, 175, 80, 0.5);
   
+  /* Info - Blue (Informational) */
+  --color-info: #64b5f6;
+  --color-info-glow: rgba(100, 181, 246, 0.4);
+  
+  /* Warning - Orange */
+  --color-warning: #ffc107;
+  --color-warning-glow: rgba(255, 193, 7, 0.4);
+  
   /* Nat 20 - Bright Gold */
   --color-crit: #ffd700;
   --color-crit-glow: rgba(255, 215, 0, 0.5);
@@ -1539,10 +1547,93 @@ button:hover {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .sheet-header h2 {
   margin: 0;
+}
+
+/* Character Selector Dropdown (Roll20 style) */
+.character-selector {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.character-selector label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.character-selector label i {
+  color: var(--color-primary);
+}
+
+.character-dropdown {
+  padding: 8px 12px;
+  border: 2px solid var(--color-primary);
+  border-radius: 8px;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  min-width: 250px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.character-dropdown:hover {
+  border-color: var(--color-secondary);
+  box-shadow: 0 0 10px var(--color-primary-glow);
+}
+
+.character-dropdown:focus {
+  outline: none;
+  border-color: var(--color-secondary);
+  box-shadow: 0 0 10px var(--color-secondary-glow);
+}
+
+.character-dropdown option {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  padding: 8px;
+}
+
+.character-dropdown option[value="new"] {
+  color: var(--color-success);
+  font-weight: 600;
+}
+
+/* Character ID Display */
+.character-id-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+}
+
+.character-id-display .id-label {
+  color: var(--text-secondary);
+}
+
+.character-id-display .id-value {
+  font-family: 'Consolas', 'Monaco', monospace;
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.character-id-display .id-value.not-saved {
+  color: var(--text-muted);
+  font-style: italic;
 }
 
 .sheet-actions {
@@ -1621,6 +1712,17 @@ button:hover {
   border-color: var(--color-success) !important;
   box-shadow: 0 0 15px var(--color-success-glow);
   animation: pulse-success 0.3s ease-out;
+}
+
+.save-sheet-btn.error {
+  background: var(--color-warning) !important;
+  border-color: var(--color-warning) !important;
+  box-shadow: 0 0 15px rgba(255, 193, 7, 0.4);
+}
+
+.save-sheet-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 
 @keyframes pulse-success {
@@ -1714,3 +1816,78 @@ button:hover {
 .cancel-export-btn:hover {
   background: var(--border-color);
 }
+
+/* ===== SAVE TOAST NOTIFICATION ===== */
+.save-toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 14px 20px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 10000;
+  transform: translateX(120%);
+  transition: transform 0.3s ease;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  font-weight: 500;
+  max-width: 350px;
+}
+
+.save-toast.show {
+  transform: translateX(0);
+}
+
+.save-toast.success {
+  background: linear-gradient(135deg, #1a472a 0%, #0d2818 100%);
+  border: 1px solid var(--color-success);
+  color: var(--color-success);
+}
+
+.save-toast.success i {
+  color: var(--color-success);
+  font-size: 1.2rem;
+}
+
+.save-toast.error {
+  background: linear-gradient(135deg, #472a1a 0%, #280d0d 100%);
+  border: 1px solid var(--color-danger);
+  color: #ff6b6b;
+}
+
+.save-toast.error i {
+  color: var(--color-danger);
+  font-size: 1.2rem;
+}
+
+.save-toast.info {
+  background: linear-gradient(135deg, #1a3a47 0%, #0d1828 100%);
+  border: 1px solid var(--color-info);
+  color: var(--color-info);
+}
+
+.save-toast.info i {
+  color: var(--color-info);
+  font-size: 1.2rem;
+}
+
+.save-toast span {
+  flex: 1;
+}
+
+.save-toast-close {
+  background: none;
+  border: none;
+  color: inherit;
+  opacity: 0.6;
+  cursor: pointer;
+  padding: 4px;
+  line-height: 1;
+  transition: opacity 0.2s;
+}
+
+.save-toast-close:hover {
+  opacity: 1;
+}
+

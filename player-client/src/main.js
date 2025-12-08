@@ -3,11 +3,176 @@ import { io } from 'socket.io-client';
 // Initialize socket connection
 const socket = io('http://localhost:3000');
 
+// API base URL
+const API_URL = 'http://localhost:3000/api';
+
 // State
 let playerName = '';
 let currentRoom = null;
+let currentRoomId = null; // Database hex ID for the room
 let currentRollRequest = null;
 let currentRollMode = 'normal'; // 'normal', 'advantage', 'disadvantage'
+let currentPlayerId = null;
+let currentSheetId = null;
+
+// ===== API FUNCTIONS =====
+
+// Get or create player by name
+async function getOrCreatePlayer(name) {
+  try {
+    const response = await fetch(`${API_URL}/players`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name })
+    });
+    if (!response.ok) throw new Error('Failed to create/get player');
+    return await response.json();
+  } catch (error) {
+    console.error('API Error (getOrCreatePlayer):', error);
+    return null;
+  }
+}
+
+// Get all character sheets for a room (shared pool - Roll20 style)
+async function getRoomSheets(roomId) {
+  try {
+    const response = await fetch(`${API_URL}/rooms/${roomId}/sheets`);
+    if (!response.ok) throw new Error('Failed to get room sheets');
+    return await response.json();
+  } catch (error) {
+    console.error('API Error (getRoomSheets):', error);
+    return [];
+  }
+}
+
+// Create a new character sheet (belongs to room, not player)
+async function createSheet(roomId, sheetData) {
+  try {
+    const response = await fetch(`${API_URL}/sheets`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ roomId, ...sheetData })
+    });
+    if (!response.ok) throw new Error('Failed to create sheet');
+    return await response.json();
+  } catch (error) {
+    console.error('API Error (createSheet):', error);
+    return null;
+  }
+}
+
+// Update an existing character sheet
+async function updateSheet(sheetId, sheetData) {
+  try {
+    const response = await fetch(`${API_URL}/sheets/${sheetId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(sheetData)
+    });
+    if (!response.ok) throw new Error('Failed to update sheet');
+    return await response.json();
+  } catch (error) {
+    console.error('API Error (updateSheet):', error);
+    return null;
+  }
+}
+
+// Get a specific character sheet
+async function getSheet(sheetId) {
+  try {
+    const response = await fetch(`${API_URL}/sheets/${sheetId}`);
+    if (!response.ok) throw new Error('Failed to get sheet');
+    return await response.json();
+  } catch (error) {
+    console.error('API Error (getSheet):', error);
+    return null;
+  }
+}
+
+// ===== SAVE TOAST NOTIFICATION =====
+function showSaveToast(message, type = 'success') {
+  // Remove any existing save toast
+  const existingToast = document.getElementById('save-toast');
+  if (existingToast) {
+    existingToast.remove();
+  }
+  
+  const toast = document.createElement('div');
+  toast.id = 'save-toast';
+  toast.className = `save-toast ${type}`;
+  
+  const icon = type === 'success' ? 'fa-check-circle' : 
+               type === 'error' ? 'fa-exclamation-circle' : 
+               'fa-info-circle';
+  
+  toast.innerHTML = `
+    <i class="fa-solid ${icon}"></i>
+    <span>${message}</span>
+    <button class="save-toast-close" onclick="this.parentElement.remove()">
+      <i class="fa-solid fa-times"></i>
+    </button>
+  `;
+  
+  document.body.appendChild(toast);
+  
+  // Trigger animation
+  setTimeout(() => toast.classList.add('show'), 10);
+  
+  // Auto-dismiss after 4 seconds
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => toast.remove(), 300);
+  }, 4000);
+}
+
+// ===== UNIFIED SAVE FUNCTION =====
+async function saveToDatabase() {
+  // Save to localStorage first (always as backup)
+  saveCharacterSheet();
+  
+  // If not connected to a room, just use localStorage
+  if (!currentRoomId) {
+    console.log('No room ID - saved to localStorage only');
+    return { success: true, location: 'local' };
+  }
+  
+  try {
+    if (currentSheetId) {
+      // Update existing sheet
+      const result = await updateSheet(currentSheetId, characterSheet);
+      if (!result) throw new Error('Failed to update sheet');
+      console.log('Character sheet updated in database:', result);
+      return { success: true, location: 'database', data: result };
+    } else {
+      // Create new sheet (belongs to the room)
+      const result = await createSheet(currentRoomId, characterSheet);
+      if (!result) throw new Error('Failed to create sheet');
+      currentSheetId = result.id;
+      localStorage.setItem('dordroller_sheet_id', currentSheetId);
+      updateCharacterIdDisplay(); // Update the ID display
+      updateCharacterDropdown(); // Refresh dropdown to include new character
+      console.log('New character sheet created in database:', result);
+      return { success: true, location: 'database', data: result };
+    }
+  } catch (error) {
+    console.error('Database save error:', error);
+    return { success: false, location: 'local', error: error.message };
+  }
+}
+
+// ===== CHARACTER ID DISPLAY =====
+function updateCharacterIdDisplay() {
+  const idElement = document.getElementById('character-id-value');
+  if (!idElement) return;
+  
+  if (currentSheetId) {
+    idElement.textContent = `#${currentSheetId}`;
+    idElement.classList.remove('not-saved');
+  } else {
+    idElement.textContent = 'Not saved';
+    idElement.classList.add('not-saved');
+  }
+}
 
 // Default character sheet structure
 const defaultCharacterSheet = {
@@ -523,7 +688,7 @@ function validateCharacterSheet() {
 }
 
 // Form submit
-document.getElementById('char-form').addEventListener('submit', (e) => {
+document.getElementById('char-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   if (!validateCharacterSheet()) return;
 
@@ -623,6 +788,33 @@ document.getElementById('char-form').addEventListener('submit', (e) => {
       total: parseInt(document.getElementById(`spell-slot-${i}-total`).value) || 0,
       expended: parseInt(document.getElementById(`spell-slot-${i}-expended`).value) || 0
     });
+  }
+  
+  // Save to database with confirmation
+  const saveBtn = document.querySelector('#char-form button[type="submit"]');
+  if (saveBtn) {
+    const originalText = saveBtn.innerHTML;
+    saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
+    saveBtn.disabled = true;
+    
+    const result = await saveToDatabase();
+    
+    saveBtn.innerHTML = originalText;
+    saveBtn.disabled = false;
+    
+    if (result.success) {
+      if (result.location === 'database') {
+        showSaveToast('Character saved to server! ✓', 'success');
+      } else {
+        showSaveToast('Character saved locally (not connected to server)', 'info');
+      }
+      // Sync to GM if in a room
+      if (currentRoom) {
+        syncPlayerSummary();
+      }
+    } else {
+      showSaveToast('Save failed - saved locally as backup', 'error');
+    }
   }
 });
 
@@ -1770,27 +1962,54 @@ function syncPlayerSummary() {
   console.log('Player summary synced:', summary);
 }
 
+// Character dropdown - select character from room pool
+document.getElementById('character-dropdown')?.addEventListener('change', async (e) => {
+  const selectedId = e.target.value;
+  await handleCharacterSelect(selectedId);
+});
+
 // Save button - immediate sync
-document.getElementById('save-sheet-btn')?.addEventListener('click', () => {
+document.getElementById('save-sheet-btn')?.addEventListener('click', async () => {
   if (!currentRoom) {
     alert('You must join a room first!');
     return;
   }
   
-  // Save to localStorage
-  saveCharacterSheet();
-  
-  // Sync to server
-  syncPlayerSummary();
-  
-  // Visual feedback
   const btn = document.getElementById('save-sheet-btn');
   const originalText = btn.innerHTML;
-  btn.innerHTML = '<i class="fa-solid fa-check"></i> Saved!';
-  btn.classList.add('saved');
+  
+  // Show saving state
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
+  btn.disabled = true;
+  
+  // Use unified save function
+  const result = await saveToDatabase();
+  
+  // Sync to server for GM display
+  syncPlayerSummary();
+  
+  if (result.success) {
+    if (result.location === 'database') {
+      showSaveToast('Character synced to server! ✓', 'success');
+    } else {
+      showSaveToast('Saved locally (join a room to sync to server)', 'info');
+    }
+    
+    // Visual feedback - success
+    btn.innerHTML = '<i class="fa-solid fa-check"></i> Synced!';
+    btn.classList.add('saved');
+  } else {
+    showSaveToast('Server save failed - saved locally as backup', 'error');
+    
+    // Visual feedback - error
+    btn.innerHTML = '<i class="fa-solid fa-exclamation-triangle"></i> Local Only';
+    btn.classList.add('error');
+  }
+  
   setTimeout(() => {
     btn.innerHTML = originalText;
-    btn.classList.remove('saved');
+    btn.classList.remove('saved', 'error');
+    btn.disabled = false;
   }, 2000);
 });
 
@@ -1908,11 +2127,152 @@ document.getElementById('import-file-input')?.addEventListener('change', (e) => 
 // Start sync interval when player joins
 let syncInterval = null;
 
-socket.on('room_joined', (data) => {
-  console.log('Joined room:', data.roomCode);
+// Load character sheet from database
+// ===== CHARACTER DROPDOWN (Roll20 style - room shared pool) =====
+async function updateCharacterDropdown() {
+  const dropdown = document.getElementById('character-dropdown');
+  if (!dropdown || !currentRoomId) return;
+  
+  try {
+    const sheets = await getRoomSheets(currentRoomId);
+    
+    // Clear existing options (except first one which is "Select or create...")
+    dropdown.innerHTML = '<option value="">-- Select Character --</option>';
+    dropdown.innerHTML += '<option value="new">+ Create New Character</option>';
+    
+    // Add all room characters
+    if (sheets && sheets.length > 0) {
+      sheets.forEach(sheet => {
+        const option = document.createElement('option');
+        option.value = sheet.id;
+        option.textContent = `${sheet.name || 'Unnamed'} (${sheet.class || 'No class'} Lv.${sheet.level || 1})`;
+        if (sheet.id === currentSheetId) {
+          option.selected = true;
+        }
+        dropdown.appendChild(option);
+      });
+    }
+    
+    dropdown.style.display = 'block';
+    console.log(`Updated character dropdown with ${sheets.length} characters`);
+  } catch (error) {
+    console.error('Failed to update character dropdown:', error);
+  }
+}
+
+// Handle character selection from dropdown
+async function handleCharacterSelect(sheetId) {
+  if (!sheetId) return;
+  
+  if (sheetId === 'new') {
+    // Create new character - reset form and clear current sheet ID
+    currentSheetId = null;
+    characterSheet = { ...defaultCharacterSheet };
+    populateFormFromCharacterSheet();
+    updateAllCalculations();
+    updateHpBar();
+    updateCharacterIdDisplay();
+    showSaveToast('New character started - fill in details and save!', 'info');
+    return;
+  }
+  
+  // Load existing character
+  try {
+    const sheet = await getSheet(sheetId);
+    if (sheet) {
+      currentSheetId = sheet.id;
+      localStorage.setItem('dordroller_sheet_id', currentSheetId);
+      characterSheet = { ...defaultCharacterSheet, ...sheet };
+      populateFormFromCharacterSheet();
+      updateAllCalculations();
+      updateHpBar();
+      updateCharacterIdDisplay();
+      showSaveToast(`Loaded: ${characterSheet.name || 'Unnamed Character'}`, 'info');
+      
+      // Sync with GM
+      syncPlayerSummary();
+    }
+  } catch (error) {
+    console.error('Failed to load character:', error);
+    showSaveToast('Failed to load character', 'error');
+  }
+}
+
+async function loadFromDatabase() {
+  if (!currentRoomId) return false;
+  
+  try {
+    // Update the dropdown with all room characters
+    await updateCharacterDropdown();
+    
+    // Check for saved sheet ID first
+    const savedSheetId = localStorage.getItem('dordroller_sheet_id');
+    
+    if (savedSheetId) {
+      // Try to load the specific sheet
+      const sheet = await getSheet(savedSheetId);
+      if (sheet && sheet.roomId === currentRoomId) {
+        currentSheetId = sheet.id;
+        // Merge with defaults to ensure all fields exist
+        characterSheet = { ...defaultCharacterSheet, ...sheet };
+        updateCharacterIdDisplay(); // Update the ID display
+        console.log('Loaded character sheet from database:', characterSheet.name);
+        return true;
+      }
+    }
+    
+    // Otherwise, get all sheets for this room and let user pick
+    const sheets = await getRoomSheets(currentRoomId);
+    if (sheets && sheets.length > 0) {
+      // Don't auto-select, let user pick from dropdown
+      console.log(`Found ${sheets.length} characters in room`);
+      return false; // No auto-load, user will pick
+    }
+    
+    return false; // No sheets found, will use localStorage or defaults
+  } catch (error) {
+    console.error('Failed to load from database:', error);
+    return false;
+  }
+}
+
+socket.on('room_joined', async (data) => {
+  console.log('Joined room:', data.roomCode, 'Room ID:', data.roomId);
   document.getElementById('join-section').style.display = 'none';
   document.getElementById('roll-section').style.display = 'block';
   document.getElementById('character-sheet').style.display = 'block';
+  
+  // Store room ID (hex ID from database)
+  currentRoomId = data.roomId || null;
+  currentRoom = data.roomCode;
+  
+  // Get or create player in database (for tracking purposes)
+  const player = await getOrCreatePlayer(playerName);
+  if (player) {
+    currentPlayerId = player.id;
+    localStorage.setItem('dordroller_player_id', currentPlayerId);
+    console.log('Player ID:', currentPlayerId);
+    
+    // Send player ID to server for room persistence
+    socket.emit('player_update_ids', {
+      playerId: currentPlayerId,
+      characterSheetId: currentSheetId
+    });
+  }
+  
+  // Load character dropdown and try to restore last used character
+  if (currentRoomId) {
+    const loadedFromDb = await loadFromDatabase();
+    if (loadedFromDb) {
+      // Update the form with database data
+      populateFormFromCharacterSheet();
+      updateAllCalculations();
+      updateHpBar();
+    }
+  } else {
+    console.warn('No room ID received - database features unavailable');
+  }
+  
   loadCharacterSheet();
   alert(`Welcome, ${playerName}!`);
   
@@ -1950,3 +2310,10 @@ socket.on('disconnect', () => {
 populateFormFromCharacterSheet();
 updateAllCalculations();
 updateHpBar();
+
+// Check for saved sheet ID and update display
+const savedSheetId = localStorage.getItem('dordroller_sheet_id');
+if (savedSheetId) {
+  currentSheetId = savedSheetId; // Hex string, not integer
+  updateCharacterIdDisplay();
+}

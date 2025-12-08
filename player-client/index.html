@@ -119,6 +119,17 @@
       <section id="character-sheet" style="display: none;">
         <div class="sheet-header">
           <h2>Character Sheet</h2>
+          <div class="character-selector">
+            <label for="character-dropdown"><i class="fa-solid fa-users"></i> Room Characters:</label>
+            <select id="character-dropdown" class="character-dropdown" style="display: none;">
+              <option value="">-- Select Character --</option>
+              <option value="new">+ Create New Character</option>
+            </select>
+          </div>
+          <div class="character-id-display">
+            <span class="id-label">Character ID:</span>
+            <span id="character-id-value" class="id-value not-saved">Not saved</span>
+          </div>
           <div class="sheet-actions">
             <button type="button" id="export-sheet-btn" class="sheet-action-btn export-btn" title="Download character sheet as JSON file">
               <i class="fa-solid fa-download"></i> Export

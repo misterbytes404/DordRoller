@@ -1,6 +1,8 @@
 // Central socket event handler
+import { Room } from '../models/Room.js';
 
-// In-memory storage for rooms and players
+// In-memory storage for rooms and players (for real-time state)
+// Database stores persistent data; this stores ephemeral socket connections
 const rooms = {};
 
 // Helper to get or create a room
@@ -52,27 +54,37 @@ export const setupSocketHandlers = (io) => {
     });
 
     // GM joins room
-    socket.on('gm_join_room', (roomCode) => {
+    socket.on('gm_join_room', async ({ roomCode, gmName }) => {
       socket.join(roomCode);
       const room = getRoom(roomCode);
       room.gm = socket.id;
       socket.roomCode = roomCode;
       socket.isGM = true;
-      console.log(`GM ${socket.id} joined room: ${roomCode}`);
-      socket.emit('room_joined', { roomCode, role: 'gm' });
+      
+      // Persist room to database (find or create)
+      try {
+        const dbRoom = await Room.findOrCreate(roomCode, gmName || 'GM');
+        room.dbId = dbRoom.id; // Store database ID for later use
+        console.log(`GM ${socket.id} joined room: ${roomCode} (DB ID: ${dbRoom.id})`);
+        socket.emit('room_joined', { roomCode, role: 'gm', roomId: dbRoom.id });
+      } catch (error) {
+        console.error('Failed to persist room:', error);
+        socket.emit('room_joined', { roomCode, role: 'gm' });
+      }
       
       // Send current player list to GM
       broadcastPlayerList(io, roomCode);
     });
 
     // Player joins room
-    socket.on('player_join_room', ({ roomCode, playerName }) => {
+    socket.on('player_join_room', async ({ roomCode, playerName, playerId, characterSheetId }) => {
       socket.join(roomCode);
       const room = getRoom(roomCode);
       
       // Add player to room
       room.players[socket.id] = {
         playerName: playerName || 'Anonymous',
+        playerId: playerId || null,
         summary: {},
         online: true,
         lastSync: Date.now()
@@ -81,11 +93,56 @@ export const setupSocketHandlers = (io) => {
       socket.roomCode = roomCode;
       socket.isPlayer = true;
       
+      // Persist player-room association to database if we have IDs
+      let dbRoomId = room.dbId;
+      if (!dbRoomId) {
+        try {
+          const dbRoom = await Room.findByCode(roomCode);
+          if (dbRoom) {
+            dbRoomId = dbRoom.id;
+            room.dbId = dbRoomId;
+          }
+        } catch (error) {
+          console.error('Failed to find room in database:', error);
+        }
+      }
+      
+      if (dbRoomId && playerId) {
+        try {
+          await Room.addPlayer(dbRoomId, playerId, characterSheetId || null);
+          console.log(`Player ${playerName} (ID: ${playerId}) persisted to room ${roomCode}`);
+        } catch (error) {
+          console.error('Failed to persist player to room:', error);
+        }
+      }
+      
       console.log(`Player ${playerName} (${socket.id}) joined room: ${roomCode}`);
-      socket.emit('room_joined', { roomCode, role: 'player' });
+      socket.emit('room_joined', { roomCode, role: 'player', roomId: dbRoomId });
       
       // Notify GM of new player
       broadcastPlayerList(io, roomCode);
+    });
+
+    // Player sends their database IDs after getting them
+    socket.on('player_update_ids', async ({ playerId, characterSheetId }) => {
+      const roomCode = socket.roomCode;
+      if (!roomCode || !rooms[roomCode]) return;
+      
+      const room = rooms[roomCode];
+      if (room.players[socket.id]) {
+        room.players[socket.id].playerId = playerId;
+        room.players[socket.id].characterSheetId = characterSheetId;
+        
+        // Persist to database
+        if (room.dbId && playerId) {
+          try {
+            await Room.addPlayer(room.dbId, playerId, characterSheetId || null);
+            console.log(`Player ${socket.id} IDs persisted: playerId=${playerId}, sheetId=${characterSheetId}`);
+          } catch (error) {
+            console.error('Failed to persist player IDs:', error);
+          }
+        }
+      }
     });
 
     // Player syncs summary data (every 30 seconds)

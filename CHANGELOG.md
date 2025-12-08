@@ -10,6 +10,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Twitch OAuth Authentication** — SSO login via Twitch
+  - Users sign in with Twitch account
+  - Automatic account creation on first login
+  - Twitch username becomes player name
+  - JWT-based session management (7-day expiry)
+  - Feature flag (`AUTH_ENABLED`) to enable/disable
+  - Secure token handling (no hardcoded secrets)
+- **User Accounts System** — Database-backed user management
+  - Users table with Twitch ID, username, display name, avatar
+  - User-to-room membership tracking
+  - Role-based access (GM vs Player per room)
+- **Room Naming** — Rooms now have names for easier identification
+  - Create rooms with custom names
+  - Update room names (GM only)
+  - Room dropdown for users showing their joined rooms
+- **Room Membership** — Track who's in each room
+  - `room_members` table with user ID, room ID, role
+  - Join rooms by code
+  - Leave rooms
+  - View room member list with roles
+- **Landing Page** — Client selection portal
+  - Choose between GM Client and Player Client
+  - DarkLord color theme (amber/gold aesthetic)
+  - Credits page with contributor sections
+  - "Made for DarkLord_VT by Mister Bytes and the Shacolyte Community"
+- **Credits Page** — Attribution for contributors
+  - Sections for Project Lead, Artists, Audio, Community
+  - Third-party resources list (Font Awesome, 5etools, Socket.IO)
+  - Easy-to-update template for adding contributors
+- **Monster Database Persistence** — Monsters saved to PostgreSQL
+  - Monsters tied to rooms (deleted when room is deleted)
+  - Full CRUD operations via REST API
+  - Debounced HP saving (500ms) for combat efficiency
+  - Quick Add button for rapid bestiary monster addition
 - **GM Roll Log Widget** — Real-time feed of player rolls in GM client
   - Scrollable log showing player name, roll type, result, and timestamp
   - XSS-safe DOM rendering (Snyk security compliant)
@@ -60,27 +94,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Manual close button
 - Font Awesome 6.5.1 integration for dice icons
 - New `player_roll` socket event for player-initiated rolls
+- **PostgreSQL Database Integration** — Server-side character persistence
+  - PostgreSQL connection pool with SSL for production
+  - Schema: `players`, `character_sheets` (JSONB), `rooms`, `room_players`
+  - REST API endpoints:
+    - `POST /api/players` - Create/get player
+    - `GET /api/players/:id/sheets` - Get player's sheets
+    - `POST /api/sheets` - Create character sheet
+    - `GET /api/sheets/:id` - Get sheet by ID
+    - `PUT /api/sheets/:id` - Update sheet
+    - `DELETE /api/sheets/:id` - Delete sheet
+  - Packages added: `pg`, `dotenv`
+  - Environment configuration with `.env` file
+  - Auto-creates database schema on startup
+- **Save & Sync to Database** — Fixed Save & Sync button
+  - Saves to PostgreSQL database (primary)
+  - Keeps localStorage as backup
+  - Loading spinner during save
+  - Error handling with user feedback
+  - Loads most recent sheet when joining room
 
 ### Changed
 - Weapons section converted from simple inputs to full table
 - Roll buttons use light text color (#e0e0e0) matching dark theme
 - GM client layout redesigned — dice roller and roll log side-by-side
+- Backend migrated from SQLite to PostgreSQL for Railway deployment
+
+### Fixed
+- **Save & Sync button now functional** — Saves to database with visual feedback
+- Character sheet persistence now works across sessions
 
 ### Known Issues
-- **Save & Sync button not functional** — Click handler may not be attaching properly
 - **Export download button not functional** — Modal shows but download doesn't trigger
-- Event listeners for sheet buttons need debugging
-
-### In Progress
-- Debugging Save & Sync and Export functionality
-- Full character sheet persistence
+- Event listeners for export button need debugging
 
 ### Planned
-- **PostgreSQL Database Integration** (Railway deployment)
-  - Schema: players, character_sheets (JSONB), rooms, room_players
-  - REST API: `/api/players`, `/api/sheets`, `/api/rooms`
-  - Packages: `pg`, `dotenv`
-  - Replace localStorage with server-side persistence
+- Railway deployment with PostgreSQL addon
+- Room persistence in database
 
 ---
 
