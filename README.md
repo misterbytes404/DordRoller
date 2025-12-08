@@ -74,60 +74,187 @@ Full **D&D 5e character sheet** with automatic calculations:
 | **Database** | PostgreSQL (with JSONB for character sheets) |
 | **Authentication** | Twitch OAuth 2.0, Local accounts (bcrypt) |
 | **Security** | bcrypt, validator, rate limiting, OWASP compliance |
+| **Deployment** | Docker, Docker Compose, Railway, VPS |
 | **Data** | D&D 5e Bestiary JSON ([5etools](https://github.com/5etools-mirror-3/5etools-src) format) |
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Deployment Options
 
-### Prerequisites
+Dord Roller supports multiple deployment methods. Choose the one that fits your needs:
 
+| Method | Difficulty | Best For |
+|--------|------------|----------|
+| **Docker Compose** | ⭐ Easy | Local, VPS, self-hosting |
+| **Railway** | ⭐ Easiest | Cloud hosting, zero DevOps |
+| **VPS (Manual)** | ⭐⭐ Medium | Full control, learning |
+| **Local Development** | ⭐⭐ Medium | Contributing, testing |
+
+### 🐳 Option 1: Docker Compose (Recommended)
+
+The simplest way to run Dord Roller. One command starts everything.
+
+**Prerequisites:** [Docker Desktop](https://www.docker.com/products/docker-desktop/) or Docker Engine
+
+```bash
+# Clone the repository
+git clone https://github.com/misterbytes404/DordRoller.git
+cd DordRoller
+
+# Configure environment
+cp backend/.env.example .env
+# Edit .env with your settings (see Environment Configuration below)
+
+# Start everything
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop
+docker-compose down
+```
+
+**Access the app:** http://localhost:3000
+
+**Included services:**
+- Dord Roller application (backend + all clients)
+- PostgreSQL 16 database (data persisted in Docker volume)
+
+### 🚂 Option 2: Railway (Cloud PaaS)
+
+Deploy to the cloud with zero configuration.
+
+1. Fork this repository to your GitHub account
+2. Go to [Railway](https://railway.app/) and create an account
+3. Click **"New Project"** → **"Deploy from GitHub repo"**
+4. Select your forked repository
+5. Railway auto-detects the Dockerfile and builds
+6. Add a **PostgreSQL** plugin from the Railway dashboard
+7. Set environment variables in Railway:
+   - `AUTH_ENABLED` = `true` or `false`
+   - `JWT_SECRET` = (generate a random string)
+   - `TWITCH_CLIENT_ID` = (if using Twitch login)
+   - `TWITCH_CLIENT_SECRET` = (if using Twitch login)
+   - `TWITCH_REDIRECT_URI` = `https://your-app.railway.app/auth/twitch/callback`
+
+Railway automatically provides `DATABASE_URL` when you add PostgreSQL.
+
+### 🖥️ Option 3: VPS Deployment
+
+For full control on your own server (DigitalOcean, Linode, Vultr, etc.).
+
+#### With Docker (Recommended)
+
+```bash
+# SSH into your VPS
+ssh user@your-server
+
+# Install Docker (Ubuntu/Debian)
+curl -fsSL https://get.docker.com | sh
+sudo usermod -aG docker $USER
+
+# Clone and configure
+git clone https://github.com/misterbytes404/DordRoller.git
+cd DordRoller
+cp backend/.env.example .env
+nano .env  # Configure your settings
+
+# Start with Docker Compose
+docker-compose up -d
+```
+
+#### Without Docker
+
+```bash
+# Install Node.js 20
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs
+
+# Install PostgreSQL
+sudo apt install -y postgresql postgresql-contrib
+sudo -u postgres createdb dordroller
+
+# Install pnpm
+npm install -g pnpm
+
+# Clone and setup
+git clone https://github.com/misterbytes404/DordRoller.git
+cd DordRoller
+
+# Install dependencies
+cd backend && pnpm install
+cd ../gm-client && pnpm install && pnpm build
+cd ../player-client && pnpm install && pnpm build
+cd ..
+
+# Configure environment
+cp backend/.env.example backend/.env
+nano backend/.env
+
+# Install PM2 for process management
+npm install -g pm2
+
+# Start the backend
+cd backend
+pm2 start server.js --name dordroller
+pm2 save
+pm2 startup
+```
+
+**Recommended:** Use [Caddy](https://caddyserver.com/) or Nginx as a reverse proxy for HTTPS.
+
+### 💻 Option 4: Local Development
+
+For contributing or testing features.
+
+**Prerequisites:**
 - Node.js >= 18.0.0
-- pnpm (recommended) or npm
+- pnpm (`npm install -g pnpm`)
 - PostgreSQL 14+
-- Twitch Developer Account (for OAuth)
 
-### Installation
+```bash
+# Clone the repository
+git clone https://github.com/misterbytes404/DordRoller.git
+cd DordRoller
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/misterbytes404/DordRoller.git
-   cd DordRoller
-   ```
+# Install dependencies
+cd backend && pnpm install
+cd ../gm-client && pnpm install
+cd ../player-client && pnpm install
+cd ..
 
-2. **Install dependencies**
-   ```bash
-   cd backend && pnpm install
-   cd ../gm-client && pnpm install
-   cd ../player-client && pnpm install
-   ```
+# Set up PostgreSQL
+# Create a database named 'dordroller'
 
-3. **Set up PostgreSQL**
-   - Create a database named `dordroller`
-   - The schema will be auto-created on first run
+# Configure environment
+cp backend/.env.example backend/.env
+# Edit backend/.env with your database credentials
 
-4. **Configure environment variables**
-   ```bash
-   cp backend/.env.example backend/.env
-   ```
-   Edit `backend/.env` with your settings (see [Environment Configuration](#environment-configuration))
+# Start all services (in separate terminals)
+cd backend && pnpm dev        # Terminal 1
+cd gm-client && pnpm dev      # Terminal 2
+cd player-client && pnpm dev  # Terminal 3
+```
 
-5. **Start the servers**
-   ```bash
-   # Terminal 1 - Backend
-   cd backend && pnpm dev
+**Access:**
+- Landing Page: http://localhost:3000
+- GM Client: http://localhost:5173 (Vite dev server)
+- Player Client: http://localhost:5175 (Vite dev server)
 
-   # Terminal 2 - GM Client
-   cd gm-client && pnpm dev
+### ⚠️ Incompatible Platforms
 
-   # Terminal 3 - Player Client
-   cd player-client && pnpm dev
-   ```
+Traditional shared hosting (GoDaddy, Bluehost, HostGator, cPanel) is **not supported** because:
+- No Node.js runtime (or very limited)
+- No WebSocket support (Socket.io requires persistent connections)
+- No PostgreSQL (usually MySQL only)
+- No Docker support
 
-6. **Access the app**
-   - Landing Page: http://localhost:3000
-   - GM Client: http://localhost:5173
-   - Player Client: http://localhost:5175
+**Budget-friendly alternatives:**
+- [Railway](https://railway.app/) - Free tier available
+- [Render](https://render.com/) - Free tier available
+- [Fly.io](https://fly.io/) - Free tier available
+- Oracle Cloud Free Tier - Free VPS forever
 
 ---
 
@@ -157,64 +284,25 @@ JWT_SECRET=your-secure-random-string-here
 
 ## 🔐 Twitch OAuth Setup
 
-Dord Roller uses Twitch for user authentication. Follow these steps to set up OAuth:
+To enable Twitch login:
 
-### Step 1: Create a Twitch Developer Application
+1. **Create App** — Go to [Twitch Developer Console](https://dev.twitch.tv/console) → Register Your Application
+   - **OAuth Redirect URLs**: `http://localhost:3000/auth/twitch/callback` (dev) or your production URL
+   - **Category**: Website Integration
+   - **Client Type**: Confidential
 
-1. Go to the [Twitch Developer Console](https://dev.twitch.tv/console)
-2. Log in with your Twitch account
-3. Click **"Register Your Application"**
-4. Fill in the application details:
-   - **Name**: `Dord Roller` (or your preferred name)
-   - **OAuth Redirect URLs**:
-     - Development: `http://localhost:3000/auth/twitch/callback`
-     - Production: `https://your-domain.com/auth/twitch/callback`
-   - **Category**: `Website Integration`
-   - **Client Type**: `Confidential`
-5. Click **"Create"**
+2. **Get Credentials** — Click Manage → Copy Client ID → Generate New Secret (save immediately!)
 
-### Step 2: Get Your Credentials
+3. **Configure** — Add to `backend/.env`:
+   ```env
+   TWITCH_CLIENT_ID=your_client_id
+   TWITCH_CLIENT_SECRET=your_client_secret
+   TWITCH_REDIRECT_URI=http://localhost:3000/auth/twitch/callback
+   AUTH_ENABLED=true
+   JWT_SECRET=your_random_string  # Generate: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+   ```
 
-1. Click **"Manage"** on your newly created application
-2. Copy the **Client ID**
-3. Click **"New Secret"** to generate a **Client Secret**
-   - ⚠️ Save this immediately — you won't be able to see it again!
-
-### Step 3: Configure Environment Variables
-
-Add your credentials to `backend/.env`:
-
-```env
-TWITCH_CLIENT_ID=your_client_id_here
-TWITCH_CLIENT_SECRET=your_client_secret_here
-TWITCH_REDIRECT_URI=http://localhost:3000/auth/twitch/callback
-AUTH_ENABLED=true
-```
-
-### Step 4: Generate a JWT Secret
-
-Generate a secure random string for JWT signing:
-
-```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-```
-
-Add it to your `.env`:
-
-```env
-JWT_SECRET=your_generated_secret_here
-```
-
-### Authentication Flow
-
-When `AUTH_ENABLED=true`:
-1. Users click "Login with Twitch" on the landing page
-2. They're redirected to Twitch to authorize the app
-3. After authorization, they return with their Twitch profile
-4. A JWT token is created and stored in the browser
-5. The user can access their rooms and character sheets
-
-> **Note**: Set `AUTH_ENABLED=false` to use the app without authentication (useful for local testing).
+> **Note**: Set `AUTH_ENABLED=false` to use without authentication (useful for local testing).
 
 ---
 
@@ -222,48 +310,19 @@ When `AUTH_ENABLED=true`:
 
 As an alternative to Twitch OAuth, users can create local accounts with username and password.
 
-### Password Requirements (OWASP Compliant)
+**Password Requirements (OWASP Compliant):** 8+ characters with uppercase, lowercase, number, and special character.
 
-- Minimum 8 characters
-- At least one uppercase letter
-- At least one lowercase letter
-- At least one number
-- At least one special character (`!@#$%^&*()_+-=[]{}|;':",./<>?`)
-
-### Security Features
-
-| Feature | Implementation |
-|---------|----------------|
-| **Password Hashing** | bcrypt with 12 salt rounds |
-| **Account Lockout** | 5 failed attempts = 15-minute lockout |
-| **Rate Limiting** | 10 auth attempts per 15 minutes per IP |
-| **Input Validation** | `validator` library (XSS/SQL injection prevention) |
-| **Timing Attack Prevention** | Constant-time password comparison |
-| **User Enumeration Prevention** | Generic error messages |
-
-### API Endpoints
+**Security:** bcrypt hashing (12 rounds), account lockout (5 attempts), rate limiting (10/15min), input validation.
 
 ```bash
-# Register a new account
-POST /auth/register
-Content-Type: application/json
-{
-  "username": "adventurer",
-  "email": "user@example.com",
-  "password": "MySecure123!",
-  "confirmPassword": "MySecure123!"
-}
+# Register
+POST /auth/register { "username", "email", "password", "confirmPassword" }
 
-# Login with existing account
-POST /auth/login
-Content-Type: application/json
-{
-  "usernameOrEmail": "adventurer",
-  "password": "MySecure123!"
-}
+# Login  
+POST /auth/login { "usernameOrEmail", "password" }
 ```
 
-Both endpoints return a JWT token on success, which is used identically to Twitch OAuth tokens.
+Both endpoints return a JWT token identical to Twitch OAuth tokens.
 
 ---
 
@@ -278,55 +337,29 @@ Both endpoints return a JWT token on success, which is used identically to Twitc
 
 ### 📋 To Do
 
-- [ ] 🧪 **MVP 4 Testing** — Test Twitch OAuth & Local Auth flows end-to-end
-- [ ] 🚀 **Railway Deployment** — Deploy backend with PostgreSQL addon
-- [ ] 📺 OBS Monster Display — Show monster name & HP bar on stream
-- [ ] 🎲 Player Dice Rolling — Full integration with GM panel & OBS
-- [ ] 🎨 UI Overhaul — Visual polish across all clients
-- [ ] 🏠 Room Dashboard — User's room list after login
+- [ ] Test Twitch OAuth & Local Auth flows end-to-end
+- [ ] Deploy to Railway with PostgreSQL
+- [ ] OBS Monster Display (show monster name & HP on stream)
+- [ ] UI polish across all clients
+- [ ] Room dashboard after login
 
 ### ✅ Completed
 
-- [x] 🔐 **Twitch OAuth** — SSO authentication for GMs and players
-  - Twitch login integration
-  - JWT session management
-  - User accounts tied to Twitch IDs
-  - Room membership tracking
-- [x] 🔑 **Local Authentication** — Username/password accounts
-  - OWASP-compliant password requirements
-  - bcrypt password hashing (12 rounds)
-  - Account lockout after failed attempts
-  - Rate limiting on auth endpoints
-  - Input validation & sanitization
-- [x] 🏷️ **Room Naming** — Named rooms for easier management
-- [x] 🐘 **PostgreSQL Database** — Character sheet persistence
-  - Connection pool with SSL for production deployment
-  - Players table, character_sheets table with JSONB
-  - REST API endpoints (CRUD for sheets)
-  - Save & Sync button with database integration
-  - Auto-loads character sheet when joining room
-- [x] HP bars on monster cards with damage controls
+- [x] Twitch OAuth & Local Authentication
+- [x] PostgreSQL database with character sheet persistence
 - [x] GM dice roller with room broadcasting
-- [x] Player character sheet (D&D 5e PDF-style)
-- [x] Ability score calculations (modifiers, totals)
-- [x] Saving throw & skill calculations with proficiency
-- [x] Spellcasting section with cantrips & prepared spells
+- [x] Monster tracker with HP bars
+- [x] Player character sheet (D&D 5e)
+- [x] Quick roll buttons & combat dice system
+- [x] GM Roll Log widget
 - [x] Room-based session management
-- [x] GM Roll Log widget — Real-time feed of player rolls
-- [x] HP Slider with visual progress bar
-- [x] Player quick roll buttons (abilities, saves, skills)
-- [x] Combat dice roller with attack/damage system
-- [x] Floating roll toast notifications
 
 ---
 
 ## 🐛 Known Issues
 
-| Issue | Status | Description |
-|-------|--------|-------------|
-| **Export Download** | 🔴 Broken | Export modal opens but download button doesn't trigger file save |
-| **Import Character** | ⚠️ Untested | Import functionality implemented but not fully tested |
-| Monster Type Parsing | 🟡 Partial | Some bestiary entries don't parse monster types correctly |
+- **Export Download** — Modal opens but download doesn't trigger
+- **Monster Type Parsing** — Some bestiary entries don't parse correctly
 
 ---
 

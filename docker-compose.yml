@@ -1,0 +1,88 @@
+# =============================================================================
+# Dord Roller - Docker Compose Configuration
+# =============================================================================
+# 
+# Quick Start:
+#   1. Copy .env.example to .env and configure
+#   2. Run: docker-compose up -d
+#   3. Access: http://localhost:3000
+#
+# Commands:
+#   docker-compose up -d          # Start in background
+#   docker-compose down           # Stop all services
+#   docker-compose logs -f        # View logs
+#   docker-compose up -d --build  # Rebuild and start
+#
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # Dord Roller Application
+  # ---------------------------------------------------------------------------
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dordroller
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-dordroller}@db:5432/${POSTGRES_DB:-dordroller}
+      - AUTH_ENABLED=${AUTH_ENABLED:-false}
+      - JWT_SECRET=${JWT_SECRET}
+      - TWITCH_CLIENT_ID=${TWITCH_CLIENT_ID:-}
+      - TWITCH_CLIENT_SECRET=${TWITCH_CLIENT_SECRET:-}
+      - TWITCH_REDIRECT_URI=${TWITCH_REDIRECT_URI:-http://localhost:3000/auth/twitch/callback}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - dordroller-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL Database
+  # ---------------------------------------------------------------------------
+  db:
+    image: postgres:16-alpine
+    container_name: dordroller-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-dordroller}
+      - POSTGRES_DB=${POSTGRES_DB:-dordroller}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - dordroller-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-dordroller}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    # Uncomment to expose PostgreSQL port for external access (debugging)
+    # ports:
+    #   - "5432:5432"
+
+# -----------------------------------------------------------------------------
+# Networks
+# -----------------------------------------------------------------------------
+networks:
+  dordroller-network:
+    driver: bridge
+
+# -----------------------------------------------------------------------------
+# Volumes
+# -----------------------------------------------------------------------------
+volumes:
+  postgres_data:
+    driver: local

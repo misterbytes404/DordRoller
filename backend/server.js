@@ -29,11 +29,24 @@ const io = new Server(httpServer, {
 app.use(cors());
 app.use(express.json());
 
+// Determine if running in Docker (production) or development
+const isDocker = process.env.NODE_ENV === 'production';
+
+// Static file paths differ between Docker (bundled) and development (separate dirs)
+const staticBasePath = isDocker 
+  ? path.join(process.cwd(), 'public')  // Docker: files in /app/public
+  : path.join(process.cwd(), '..');      // Dev: files in parent directory
+
 // Serve static files for each client
-app.use('/landing', express.static(path.join(process.cwd(), '../landing')));
-app.use('/gm-client', express.static(path.join(process.cwd(), '../gm-client')));
-app.use('/player-client', express.static(path.join(process.cwd(), '../player-client')));
-app.use('/obs-client', express.static(path.join(process.cwd(), '../obs-client')));
+app.use('/landing', express.static(path.join(staticBasePath, isDocker ? 'landing' : 'landing')));
+app.use('/gm', express.static(path.join(staticBasePath, isDocker ? 'gm' : 'gm-client')));
+app.use('/player', express.static(path.join(staticBasePath, isDocker ? 'player' : 'player-client')));
+app.use('/obs', express.static(path.join(staticBasePath, isDocker ? 'obs' : 'obs-client')));
+
+// Legacy routes (redirect to new shorter paths)
+app.use('/gm-client', (req, res) => res.redirect('/gm' + req.url));
+app.use('/player-client', (req, res) => res.redirect('/player' + req.url));
+app.use('/obs-client', (req, res) => res.redirect('/obs' + req.url));
 
 // Redirect root to landing page
 app.get('/', (req, res) => {
@@ -60,6 +73,34 @@ app.post('/create-room', (req, res) => {
 // Basic health check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Health check endpoint for Docker/Kubernetes (also at /api/health)
+app.get('/api/health', async (req, res) => {
+  try {
+    // Check database connection
+    const { default: pool } = await import('./config/database.js');
+    await pool.query('SELECT 1');
+    
+    res.json({ 
+      status: 'healthy', 
+      timestamp: new Date().toISOString(),
+      services: {
+        database: 'connected',
+        server: 'running'
+      }
+    });
+  } catch (err) {
+    res.status(503).json({ 
+      status: 'unhealthy', 
+      timestamp: new Date().toISOString(),
+      services: {
+        database: 'disconnected',
+        server: 'running'
+      },
+      error: err.message
+    });
+  }
 });
 
 // Setup socket handlers from the centralized handler module

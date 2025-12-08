@@ -10,48 +10,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **Local Account Authentication** — Username/password registration
-  - OWASP-compliant password requirements (8+ chars, upper, lower, number, special)
-  - Secure password hashing with bcrypt (12 salt rounds)
-  - Account lockout after 5 failed login attempts (15-minute lockout)
+
+- **Docker Support** — Containerized deployment for easy self-hosting
+  - Multi-stage Dockerfile builds all clients and bundles with backend
+  - Single container serves everything (backend + GM/Player/OBS clients)
+  - Docker Compose configuration with PostgreSQL included
+  - Health check endpoint (`/api/health`) for container orchestration
+  - Works on local, VPS, Railway, Render, Fly.io
+- **Deployment Documentation** — Comprehensive guides for all platforms
+  - Docker Compose (one-command deployment)
+  - Railway (cloud PaaS with auto-deploy)
+  - VPS deployment (with and without Docker)
+  - Local development setup
+  - Incompatible platform warnings (shared hosting)
+- **Shorter Client URLs** — Cleaner paths for production
+  - `/gm` instead of `/gm-client`
+  - `/player` instead of `/player-client`
+  - `/obs` instead of `/obs-client`
+  - Legacy paths redirect automatically
+- **User Authentication System** — Secure login with multiple providers
+  - **Local accounts**: Username/password with OWASP-compliant requirements
+  - **Twitch OAuth**: SSO login via Twitch account
+  - Password hashing with bcrypt (12 salt rounds)
+  - Account lockout after 5 failed attempts (15-minute cooldown)
   - Rate limiting on auth endpoints (10 attempts per 15 minutes)
-  - Input validation with `validator` library (XSS/SQL injection prevention)
-  - Timing-safe password comparison to prevent enumeration attacks
-  - Generic error messages to prevent user enumeration
-- **Dual Authentication** — Users can choose Twitch SSO or local account
-  - Same JWT-based session management for both auth types
-  - Unified `/auth/me` endpoint returns user data regardless of auth type
-  - `/auth/register` for new local accounts
-  - `/auth/login` for local account authentication
-- **Twitch OAuth Authentication** — SSO login via Twitch
-  - Users sign in with Twitch account
-  - Automatic account creation on first login
-  - Twitch username becomes player name
   - JWT-based session management (7-day expiry)
-  - Feature flag (`AUTH_ENABLED`) to enable/disable
-  - Secure token handling (no hardcoded secrets)
-- **User Accounts System** — Database-backed user management
+  - Feature flag (`AUTH_ENABLED`) to enable/disable auth
+- **User Accounts & Rooms** — Database-backed user and room management
   - Users table with Twitch ID, username, display name, avatar
-  - User-to-room membership tracking
-  - Role-based access (GM vs Player per room)
-- **Room Naming** — Rooms now have names for easier identification
-  - Create rooms with custom names
-  - Update room names (GM only)
-  - Room dropdown for users showing their joined rooms
-- **Room Membership** — Track who's in each room
-  - `room_members` table with user ID, room ID, role
-  - Join rooms by code
-  - Leave rooms
-  - View room member list with roles
+  - Room naming with custom names (GM can update)
+  - Room membership tracking with roles (GM vs Player)
+  - Join/leave rooms by code
 - **Landing Page** — Client selection portal
   - Choose between GM Client and Player Client
   - DarkLord color theme (amber/gold aesthetic)
   - Credits page with contributor sections
-  - "Made for DarkLord_VT by Mister Bytes and the Shacolyte Community"
-- **Credits Page** — Attribution for contributors
-  - Sections for Project Lead, Artists, Audio, Community
-  - Third-party resources list (Font Awesome, 5etools, Socket.IO)
-  - Easy-to-update template for adding contributors
 - **Monster Database Persistence** — Monsters saved to PostgreSQL
   - Monsters tied to rooms (deleted when room is deleted)
   - Full CRUD operations via REST API
@@ -120,36 +113,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Packages added: `pg`, `dotenv`
   - Environment configuration with `.env` file
   - Auto-creates database schema on startup
-- **Save & Sync to Database** — Fixed Save & Sync button
-  - Saves to PostgreSQL database (primary)
-  - Keeps localStorage as backup
-  - Loading spinner during save
-  - Error handling with user feedback
-  - Loads most recent sheet when joining room
 
 ### Changed
+
 - Weapons section converted from simple inputs to full table
 - Roll buttons use light text color (#e0e0e0) matching dark theme
 - GM client layout redesigned — dice roller and roll log side-by-side
 - Backend migrated from SQLite to PostgreSQL for Railway deployment
 
 ### Fixed
-- **Save & Sync button now functional** — Saves to database with visual feedback
-- Character sheet persistence now works across sessions
+
+- **Save & Sync button** — Now saves to PostgreSQL with visual feedback
+- **Character sheet persistence** — Works across sessions via database
 
 ### Known Issues
-- **Export download button not functional** — Modal shows but download doesn't trigger
-- Event listeners for export button need debugging
 
-### Planned
-- Railway deployment with PostgreSQL addon
-- Room persistence in database
+- **Export download button not functional** — Modal shows but download doesn't trigger
 
 ---
 
 ## [0.3.0] - 2025-12-06
 
 ### Added
+
 - **Player Character Sheet** — Full D&D 5e interactive character sheet
   - Basic info section (name, class, level, race, alignment, XP)
   - Ability scores with automatic modifier calculations
@@ -167,6 +153,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initiative auto-calculation from Dexterity modifier
 
 ### Changed
+
 - Player client UI restructured with two-column layout
 - Saving throws repositioned to right column (between Abilities and Skills)
 
@@ -175,6 +162,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.2.0] - 2025-11-20
 
 ### Added
+
 - **GM Monster Tracker** — Search and track D&D 5e monsters
   - Bestiary search with monster data from 5etools JSON
   - HP bars with damage/heal controls
@@ -185,6 +173,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Auto-cleanup of empty rooms
 
 ### Fixed
+
 - Monster type parsing for some bestiary entries (partial)
 
 ---
@@ -192,6 +181,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0] - 2025-11-15
 
 ### Added
+
 - **GM Dice Roller** — Core dice rolling functionality
   - Roll d4, d6, d8, d10, d12, d20 with quantity (1-20)
   - Advantage and Disadvantage roll modes
@@ -212,6 +202,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 | Version | Date | Milestone |
 |---------|------|-----------|
+| 0.4.0 | TBD | User Auth & Docker Deployment |
 | 0.3.0 | 2025-12-06 | Player Character Sheet |
 | 0.2.0 | 2025-11-20 | GM Monster Tracker |
 | 0.1.0 | 2025-11-15 | Initial Release — GM Dice Roller |
