@@ -274,10 +274,11 @@ Both endpoints return a JWT token on success, which is used identically to Twitc
 | **MVP 1** | ✅ Complete | GM-to-OBS Dice Roller |
 | **MVP 2** | ✅ Complete | GM Stat Tracker |
 | **MVP 3** | ✅ Complete | Player Client Integration |
-| **MVP 4** | ✅ Complete | Database & Authentication |
+| **MVP 4** | 🧪 Testing | Database & Authentication |
 
 ### 📋 To Do
 
+- [ ] 🧪 **MVP 4 Testing** — Test Twitch OAuth & Local Auth flows end-to-end
 - [ ] 🚀 **Railway Deployment** — Deploy backend with PostgreSQL addon
 - [ ] 📺 OBS Monster Display — Show monster name & HP bar on stream
 - [ ] 🎲 Player Dice Rolling — Full integration with GM panel & OBS
