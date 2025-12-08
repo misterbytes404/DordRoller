@@ -85,10 +85,12 @@ Full **D&D 5e character sheet** with automatic calculations:
 
 The easiest and most secure way to deploy. No server management, automatic HTTPS, no port forwarding required.
 
-1. Fork this repository to your GitHub account
+> ⚠️ **Important:** You must fork this repository to your own GitHub account. Deploying directly from the original repo means you won't be able to customize settings, update your instance, or control your data. **Fork first = you own your installation.**
+
+1. **Fork this repository** to your GitHub account (click "Fork" button top-right)
 2. Go to [Railway](https://railway.app/) and create an account
 3. Click **"New Project"** → **"Deploy from GitHub repo"**
-4. Select your forked repository
+4. Select **your forked repository** (not the original)
 5. Railway auto-detects the Dockerfile and builds
 6. Add a **PostgreSQL** plugin from the Railway dashboard
 7. Set environment variables in Railway:
