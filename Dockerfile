@@ -77,6 +77,7 @@ COPY --from=player-builder /app/player-client/dist ./public/player
 # Copy static clients (no build step needed)
 COPY obs-client/ ./public/obs
 COPY landing/ ./public/landing
+COPY account/ ./public/account
 
 # Copy shared utilities
 COPY shared/ ./shared
