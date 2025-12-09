@@ -71,7 +71,7 @@ Full **D&D 5e character sheet** with automatic calculations:
 | **Frontend** | Vite, ES6+ JavaScript, CSS3 |
 | **Real-time** | WebSocket (Socket.io) |
 | **Database** | PostgreSQL (with JSONB for character sheets) |
-| **Authentication** | Twitch OAuth 2.0, Local accounts (bcrypt) |
+| **Authentication** | Twitch OAuth 2.0 |
 | **Security** | bcrypt, validator, rate limiting, OWASP compliance |
 | **Deployment** | Docker, Docker Compose, Railway, VPS |
 | **Data** | D&D 5e Bestiary JSON ([5etools](https://github.com/5etools-mirror-3/5etools-src) format) |
@@ -106,12 +106,7 @@ Railway automatically provides `DATABASE_URL` when you add PostgreSQL.
 | `TWITCH_CLIENT_SECRET` | For Twitch login | From Twitch Developer Console |
 | `TWITCH_REDIRECT_URI` | For Twitch login | `https://your-app.railway.app/auth/twitch/callback` |
 
-**🔑 Quick Start (Username/Password only):**
-- Set `AUTH_ENABLED=true`
-- Set `JWT_SECRET` to a random string
-- Done! Users can register with username/password immediately.
-
-**🎮 Adding Twitch Login (Optional):**
+**🎮 Twitch Login Setup:**
 - Follow the [Twitch OAuth Setup](#-twitch-oauth-setup) section below
 - Add `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET`, and `TWITCH_REDIRECT_URI`
 
@@ -281,13 +276,14 @@ Both endpoints return a JWT token identical to Twitch OAuth tokens.
 ### 📋 To Do
 
 - [ ] Deploy to Railway with PostgreSQL
+- [ ] Local account authentication (username/password)
 - [ ] OBS Monster Display (show monster name & HP on stream)
 - [ ] UI polish across all clients
 - [ ] Room dashboard after login
 
 ### ✅ Completed
 
-- [x] Twitch OAuth & Local Authentication
+- [x] Twitch OAuth authentication
 - [x] PostgreSQL database with character sheet persistence
 - [x] GM dice roller with room broadcasting
 - [x] Monster tracker with HP bars
