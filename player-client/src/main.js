@@ -16,6 +16,41 @@ let currentPlayerId = null;
 let currentSheetId = null;
 let currentUser = null; // Logged in user from auth
 
+// ===== SECURITY HELPERS =====
+
+// Sanitize text to prevent XSS attacks
+function escapeHtml(text) {
+  if (text === null || text === undefined) return '';
+  const str = String(text);
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// Validate and sanitize avatar URLs (only allow https from trusted domains)
+function sanitizeAvatarUrl(url) {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    // Only allow HTTPS URLs from trusted avatar providers
+    const trustedDomains = [
+      'static-cdn.jtvnw.net',  // Twitch avatars
+      'gravatar.com',
+      'www.gravatar.com',
+      'avatars.githubusercontent.com',
+      'cdn.discordapp.com'
+    ];
+    if (parsed.protocol === 'https:' && trustedDomains.some(d => parsed.hostname === d || parsed.hostname.endsWith('.' + d))) {
+      return url;
+    }
+    console.warn('Avatar URL blocked (untrusted domain):', url);
+    return null;
+  } catch (e) {
+    console.warn('Invalid avatar URL:', url);
+    return null;
+  }
+}
+
 // ===== AUTH FUNCTIONS =====
 
 // Get current user using cookie-based authentication
@@ -87,10 +122,15 @@ function showUserProfileLink() {
     const userDropdown = document.createElement('div');
     userDropdown.id = 'user-profile-link';
     userDropdown.className = 'user-dropdown';
+    
+    // Sanitize avatar URL and display name for XSS prevention
+    const safeAvatarUrl = sanitizeAvatarUrl(currentUser.avatarUrl);
+    const safeDisplayName = escapeHtml(currentUser.displayName);
+    
     userDropdown.innerHTML = `
       <button class="user-dropdown-btn" id="user-dropdown-toggle">
-        ${currentUser.avatarUrl ? `<img src="${currentUser.avatarUrl}" alt="Avatar" class="user-avatar-small">` : '<i class="fa-solid fa-user"></i>'}
-        <span>${currentUser.displayName}</span>
+        ${safeAvatarUrl ? `<img src="${safeAvatarUrl}" alt="Avatar" class="user-avatar-small">` : '<i class="fa-solid fa-user"></i>'}
+        <span>${safeDisplayName}</span>
         <i class="fa-solid fa-chevron-down"></i>
       </button>
       <div class="user-dropdown-menu" id="user-dropdown-menu">
@@ -238,11 +278,15 @@ async function showUserProfileModal() {
     });
     const data = await response.json();
     
+    // Sanitize user data for XSS prevention
+    const safeAvatarUrl = sanitizeAvatarUrl(data.user.avatarUrl);
+    const safeDisplayName = escapeHtml(data.user.displayName);
+    
     const profileContent = document.getElementById('profile-content');
     profileContent.innerHTML = `
       <div style="margin-bottom: 15px;">
-        ${data.user.avatarUrl ? `<img src="${data.user.avatarUrl}" alt="Avatar" style="width: 60px; height: 60px; border-radius: 50%; margin-right: 10px; vertical-align: middle;">` : ''}
-        <strong style="font-size: 1.2rem;">${data.user.displayName}</strong>
+        ${safeAvatarUrl ? `<img src="${safeAvatarUrl}" alt="Avatar" style="width: 60px; height: 60px; border-radius: 50%; margin-right: 10px; vertical-align: middle;">` : ''}
+        <strong style="font-size: 1.2rem;">${safeDisplayName}</strong>
         <span style="color: #888; font-size: 0.85rem; display: block; margin-top: 5px;">
           ${data.user.authType === 'twitch' ? '<i class="fa-brands fa-twitch"></i> Twitch Account' : '<i class="fa-solid fa-key"></i> Local Account'}
         </span>
@@ -255,7 +299,7 @@ async function showUserProfileModal() {
         ${data.rooms?.gmRooms?.length ? 
           data.rooms.gmRooms.map(r => `
             <div style="background: #2a2a3e; padding: 8px 12px; border-radius: 6px; margin: 5px 0;">
-              <strong>${r.name}</strong> <span style="color: #888; font-size: 0.85rem;">Code: ${r.code}</span>
+              <strong>${escapeHtml(r.name)}</strong> <span style="color: #888; font-size: 0.85rem;">Code: ${escapeHtml(r.code)}</span>
             </div>
           `).join('') : 
           '<p style="color: #888; font-style: italic;">No rooms yet</p>'
@@ -269,7 +313,7 @@ async function showUserProfileModal() {
         ${data.rooms?.playerRooms?.length ? 
           data.rooms.playerRooms.map(r => `
             <div style="background: #2a2a3e; padding: 8px 12px; border-radius: 6px; margin: 5px 0;">
-              <strong>${r.name}</strong> <span style="color: #888; font-size: 0.85rem;">Code: ${r.code}</span>
+              <strong>${escapeHtml(r.name)}</strong> <span style="color: #888; font-size: 0.85rem;">Code: ${escapeHtml(r.code)}</span>
             </div>
           `).join('') : 
           '<p style="color: #888; font-style: italic;">No rooms joined yet</p>'

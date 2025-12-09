@@ -137,6 +137,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Player tracking** — Now uses authenticated user ID instead of separate players table
 - **Character sheet export/import** — Both features now fully functional
 - **10-second save timeout** — Prevents infinite spinner on save operations
+- **XSS Security Vulnerabilities** — Fixed multiple DOM-based XSS issues identified by Snyk:
+  - Added `escapeHtml()` sanitization to monster tracker card rendering
+  - Added `escapeHtml()` and `sanitizeAvatarUrl()` helpers to player client
+  - Avatar URLs now whitelist-validated (Twitch, Gravatar, GitHub, Discord only)
+  - Room names/codes escaped in profile modal
+  - Socket IDs escaped in data attributes
 
 ### Removed
 

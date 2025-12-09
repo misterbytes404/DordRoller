@@ -467,53 +467,53 @@ export class MonsterTracker {
       const card = document.createElement('div');
       card.className = 'monster-card';
       if (this.editingId === monster.id) {
-        // Edit mode: Show all inputs with labels
+        // Edit mode: Show all inputs with labels (escape values for input attributes)
         card.innerHTML = `
           <label for="edit-name-${monster.id}">Name:</label><br>
-          <input type="text" id="edit-name-${monster.id}" value="${monster.name}"><br>
+          <input type="text" id="edit-name-${monster.id}" value="${this.escapeHtml(monster.name)}"><br>
           <label for="edit-source-${monster.id}">Source:</label><br>
-          <input type="text" id="edit-source-${monster.id}" value="${monster.source || ''}"><br>
+          <input type="text" id="edit-source-${monster.id}" value="${this.escapeHtml(monster.source || '')}"><br>
           <label for="edit-type-${monster.id}">Type:</label><br>
-          <input type="text" id="edit-type-${monster.id}" value="${monster.type}"><br>
+          <input type="text" id="edit-type-${monster.id}" value="${this.escapeHtml(monster.type)}"><br>
           <label for="edit-ac-${monster.id}">AC:</label><br>
-          <input type="number" id="edit-ac-${monster.id}" value="${monster.ac}"><br>
+          <input type="number" id="edit-ac-${monster.id}" value="${this.escapeHtml(monster.ac)}"><br>
           <label for="edit-hp-${monster.id}">HP:</label><br>
-          <input type="number" id="edit-hp-${monster.id}" value="${monster.hp}"><br>
+          <input type="number" id="edit-hp-${monster.id}" value="${this.escapeHtml(monster.hp)}"><br>
           <label for="edit-hp-max-${monster.id}">HP Max:</label><br>
-          <input type="number" id="edit-hp-max-${monster.id}" value="${monster.hpMax}"><br>
+          <input type="number" id="edit-hp-max-${monster.id}" value="${this.escapeHtml(monster.hpMax)}"><br>
           <label for="edit-hit-dice-${monster.id}">Hit Dice:</label><br>
-          <input type="text" id="edit-hit-dice-${monster.id}" value="${monster.hitDice || ''}"><br>
+          <input type="text" id="edit-hit-dice-${monster.id}" value="${this.escapeHtml(monster.hitDice || '')}"><br>
           <label for="edit-speed-${monster.id}">Speed:</label><br>
-          <input type="text" id="edit-speed-${monster.id}" value="${monster.speed}"><br>
+          <input type="text" id="edit-speed-${monster.id}" value="${this.escapeHtml(monster.speed)}"><br>
           <label for="edit-str-${monster.id}">STR:</label><br>
-          <input type="number" id="edit-str-${monster.id}" value="${monster.abilities.str}" min="1" max="30"><br>
+          <input type="number" id="edit-str-${monster.id}" value="${this.escapeHtml(monster.abilities.str)}" min="1" max="30"><br>
           <label for="edit-dex-${monster.id}">DEX:</label><br>
-          <input type="number" id="edit-dex-${monster.id}" value="${monster.abilities.dex}" min="1" max="30"><br>
+          <input type="number" id="edit-dex-${monster.id}" value="${this.escapeHtml(monster.abilities.dex)}" min="1" max="30"><br>
           <label for="edit-con-${monster.id}">CON:</label><br>
-          <input type="number" id="edit-con-${monster.id}" value="${monster.abilities.con}" min="1" max="30"><br>
+          <input type="number" id="edit-con-${monster.id}" value="${this.escapeHtml(monster.abilities.con)}" min="1" max="30"><br>
           <label for="edit-int-${monster.id}">INT:</label><br>
-          <input type="number" id="edit-int-${monster.id}" value="${monster.abilities.int}" min="1" max="30"><br>
+          <input type="number" id="edit-int-${monster.id}" value="${this.escapeHtml(monster.abilities.int)}" min="1" max="30"><br>
           <label for="edit-wis-${monster.id}">WIS:</label><br>
-          <input type="number" id="edit-wis-${monster.id}" value="${monster.abilities.wis}" min="1" max="30"><br>
+          <input type="number" id="edit-wis-${monster.id}" value="${this.escapeHtml(monster.abilities.wis)}" min="1" max="30"><br>
           <label for="edit-cha-${monster.id}">CHA:</label><br>
-          <input type="number" id="edit-cha-${monster.id}" value="${monster.abilities.cha}" min="1" max="30"><br>
+          <input type="number" id="edit-cha-${monster.id}" value="${this.escapeHtml(monster.abilities.cha)}" min="1" max="30"><br>
           <label for="edit-skills-${monster.id}">Skills:</label><br>
-          <input type="text" id="edit-skills-${monster.id}" value="${monster.skills || ''}"><br>
+          <input type="text" id="edit-skills-${monster.id}" value="${this.escapeHtml(monster.skills || '')}"><br>
           <label for="edit-senses-${monster.id}">Senses:</label><br>
-          <input type="text" id="edit-senses-${monster.id}" value="${monster.senses || ''}"><br>
+          <input type="text" id="edit-senses-${monster.id}" value="${this.escapeHtml(monster.senses || '')}"><br>
           <label for="edit-languages-${monster.id}">Languages:</label><br>
-          <input type="text" id="edit-languages-${monster.id}" value="${monster.languages || ''}"><br>
+          <input type="text" id="edit-languages-${monster.id}" value="${this.escapeHtml(monster.languages || '')}"><br>
           <label for="edit-cr-${monster.id}">CR:</label><br>
-          <input type="text" id="edit-cr-${monster.id}" value="${monster.cr || ''}"><br>
+          <input type="text" id="edit-cr-${monster.id}" value="${this.escapeHtml(monster.cr || '')}"><br>
           <label for="edit-actions-${monster.id}">Actions:</label><br>
-          <textarea id="edit-actions-${monster.id}">${monster.actions || ''}</textarea><br>
+          <textarea id="edit-actions-${monster.id}">${this.escapeHtml(monster.actions || '')}</textarea><br>
           <label for="edit-reactions-${monster.id}">Reactions:</label><br>
-          <textarea id="edit-reactions-${monster.id}">${monster.reactions || ''}</textarea><br>
+          <textarea id="edit-reactions-${monster.id}">${this.escapeHtml(monster.reactions || '')}</textarea><br>
           <button class="save-btn" data-id="${monster.id}">Save</button>
           <button class="cancel-btn" data-id="${monster.id}">Cancel</button>
         `;
       } else {
-        // Display mode: Specified format
+        // Display mode: Specified format (escape all monster data)
         const modDex = this.getModifier(monster.abilities.dex);  // For Initiative
         const modStr = this.getModifier(monster.abilities.str);
         const saveStr = this.getSave(monster.abilities.str);
@@ -529,35 +529,35 @@ export class MonsterTracker {
         const saveCha = this.getSave(monster.abilities.cha);
 
         card.innerHTML = `
-          <p><strong>Name:</strong> ${monster.name}</p>
-          <p><strong>Source:</strong> ${monster.source || 'Unknown'}</p>
-          <p><strong>Type:</strong> ${monster.type}</p>
+          <p><strong>Name:</strong> ${this.escapeHtml(monster.name)}</p>
+          <p><strong>Source:</strong> ${this.escapeHtml(monster.source || 'Unknown')}</p>
+          <p><strong>Type:</strong> ${this.escapeHtml(monster.type)}</p>
           <hr>
-          <p><strong>AC:</strong> ${monster.ac || (10 + Math.floor(((monster.abilities.dex || 10) - 10) / 2))}</p>
-          <p><strong>Initiative:</strong> ${modDex}</p>
-          <p><strong>HP:</strong> <span id="hp-text-${monster.id}">${monster.hp}</span> / ${monster.hpMax}</p>
+          <p><strong>AC:</strong> ${this.escapeHtml(monster.ac || (10 + Math.floor(((monster.abilities.dex || 10) - 10) / 2)))}</p>
+          <p><strong>Initiative:</strong> ${this.escapeHtml(modDex)}</p>
+          <p><strong>HP:</strong> <span id="hp-text-${monster.id}">${this.escapeHtml(monster.hp)}</span> / ${this.escapeHtml(monster.hpMax)}</p>
           <progress id="hp-bar-${monster.id}" value="${monster.hp}" max="${monster.hpMax}"></progress><br>
           <input type="range" id="hp-slider-${monster.id}" min="0" max="${monster.hpMax}" step="1" value="${monster.hp}"><br>
-          <p><strong>Hit Dice:</strong> ${monster.hitDice || 'N/A'}</p>
-          <p><strong>Speed:</strong> ${monster.speed}</p>
+          <p><strong>Hit Dice:</strong> ${this.escapeHtml(monster.hitDice || 'N/A')}</p>
+          <p><strong>Speed:</strong> ${this.escapeHtml(monster.speed)}</p>
           <hr>
           <table class="abilities-table">
             <tr><th>Attribute</th><th>Score</th><th>Mod</th><th>Save</th></tr>
-            <tr><td>Str</td><td>${monster.abilities.str}</td><td>${modStr}</td><td>${saveStr}</td></tr>
-            <tr><td>Dex</td><td>${monster.abilities.dex}</td><td>${modDexAttr}</td><td>${saveDex}</td></tr>
-            <tr><td>Con</td><td>${monster.abilities.con}</td><td>${modCon}</td><td>${saveCon}</td></tr>
-            <tr><td>Int</td><td>${monster.abilities.int}</td><td>${modInt}</td><td>${saveInt}</td></tr>
-            <tr><td>Wis</td><td>${monster.abilities.wis}</td><td>${modWis}</td><td>${saveWis}</td></tr>
-            <tr><td>Cha</td><td>${monster.abilities.cha}</td><td>${modCha}</td><td>${saveCha}</td></tr>
+            <tr><td>Str</td><td>${this.escapeHtml(monster.abilities.str)}</td><td>${this.escapeHtml(modStr)}</td><td>${this.escapeHtml(saveStr)}</td></tr>
+            <tr><td>Dex</td><td>${this.escapeHtml(monster.abilities.dex)}</td><td>${this.escapeHtml(modDexAttr)}</td><td>${this.escapeHtml(saveDex)}</td></tr>
+            <tr><td>Con</td><td>${this.escapeHtml(monster.abilities.con)}</td><td>${this.escapeHtml(modCon)}</td><td>${this.escapeHtml(saveCon)}</td></tr>
+            <tr><td>Int</td><td>${this.escapeHtml(monster.abilities.int)}</td><td>${this.escapeHtml(modInt)}</td><td>${this.escapeHtml(saveInt)}</td></tr>
+            <tr><td>Wis</td><td>${this.escapeHtml(monster.abilities.wis)}</td><td>${this.escapeHtml(modWis)}</td><td>${this.escapeHtml(saveWis)}</td></tr>
+            <tr><td>Cha</td><td>${this.escapeHtml(monster.abilities.cha)}</td><td>${this.escapeHtml(modCha)}</td><td>${this.escapeHtml(saveCha)}</td></tr>
           </table>
           <hr>
-          <p><strong>Skills:</strong> ${monster.skills || 'None'}</p>
-          <p><strong>Senses:</strong> ${monster.senses || 'None'}</p>
-          <p><strong>Languages:</strong> ${monster.languages || 'None'}</p>
-          <p><strong>CR:</strong> ${monster.cr || 'N/A'}</p>
+          <p><strong>Skills:</strong> ${this.escapeHtml(monster.skills || 'None')}</p>
+          <p><strong>Senses:</strong> ${this.escapeHtml(monster.senses || 'None')}</p>
+          <p><strong>Languages:</strong> ${this.escapeHtml(monster.languages || 'None')}</p>
+          <p><strong>CR:</strong> ${this.escapeHtml(monster.cr || 'N/A')}</p>
           <hr>
-          <p><strong>Actions:</strong><br>${monster.actions ? monster.actions.replace(/\n/g, '<br>') : 'None'}</p>
-          <p><strong>Reactions:</strong><br>${monster.reactions ? monster.reactions.replace(/\n/g, '<br>') : 'None'}</p>
+          <p><strong>Actions:</strong><br>${this.escapeHtmlWithBreaks(monster.actions)}</p>
+          <p><strong>Reactions:</strong><br>${this.escapeHtmlWithBreaks(monster.reactions)}</p>
           <button class="edit-btn" data-id="${monster.id}">Edit</button>
           <button class="delete-btn" data-id="${monster.id}">Delete</button>
         `;
@@ -698,5 +698,21 @@ export class MonsterTracker {
     document.getElementById('monster-cr').value = '';
     document.getElementById('monster-actions').value = '';
     document.getElementById('monster-reactions').value = '';
+  }
+
+  // Sanitize text to prevent XSS attacks
+  escapeHtml(text) {
+    if (text === null || text === undefined) return '';
+    const str = String(text);
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  // Sanitize text and convert newlines to <br> safely
+  escapeHtmlWithBreaks(text) {
+    if (text === null || text === undefined) return 'None';
+    const escaped = this.escapeHtml(text);
+    return escaped.replace(/\n/g, '<br>');
   }
 }

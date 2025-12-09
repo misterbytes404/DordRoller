@@ -99,7 +99,7 @@ export class PlayerTracker {
         <td class="hp-cell">${this.escapeHtml(hpDisplay)}</td>
         <td class="summary-cell">${this.escapeHtml(summaryText)}</td>
         <td class="action-cell">
-          <button class="view-sheet-btn" data-socket-id="${player.socketId}" ${!player.online ? 'disabled' : ''}>
+          <button class="view-sheet-btn" data-socket-id="${this.escapeHtml(player.socketId)}" ${!player.online ? 'disabled' : ''}>
             <i class="fa-solid fa-eye"></i> View
           </button>
         </td>
