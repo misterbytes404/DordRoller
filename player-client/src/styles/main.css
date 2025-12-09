@@ -89,6 +89,12 @@ h1 .fa-dice-d20 {
   filter: drop-shadow(0 0 8px var(--color-primary-glow));
 }
 
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
 #connection-status {
   padding: 8px 16px;
   border-radius: 4px;

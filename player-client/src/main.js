@@ -177,7 +177,13 @@ function showUserProfileLink() {
       document.head.appendChild(style);
     }
     
-    header.appendChild(userDropdown);
+    // Append to user-area container (like GM client) instead of header
+    const userArea = document.getElementById('user-area');
+    if (userArea) {
+      userArea.appendChild(userDropdown);
+    } else {
+      header.appendChild(userDropdown);
+    }
     
     // Toggle dropdown
     document.getElementById('user-dropdown-toggle').addEventListener('click', (e) => {
