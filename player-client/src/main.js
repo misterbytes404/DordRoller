@@ -5,6 +5,7 @@ const socket = io('http://localhost:3000');
 
 // API base URL
 const API_URL = 'http://localhost:3000/api';
+const AUTH_URL = 'http://localhost:3000/auth';
 
 // State
 let playerName = '';
@@ -14,6 +15,298 @@ let currentRollRequest = null;
 let currentRollMode = 'normal'; // 'normal', 'advantage', 'disadvantage'
 let currentPlayerId = null;
 let currentSheetId = null;
+let currentUser = null; // Logged in user from auth
+
+// ===== AUTH FUNCTIONS =====
+
+// Get current user using cookie-based authentication
+async function getCurrentUser() {
+  try {
+    const response = await fetch(`${AUTH_URL}/me`, {
+      credentials: 'include'
+    });
+    
+    if (!response.ok) {
+      return null;
+    }
+    
+    const data = await response.json();
+    return data.user;
+  } catch (error) {
+    console.error('Error getting current user:', error);
+    return null;
+  }
+}
+
+// Initialize auth on page load
+async function initAuth() {
+  console.log('initAuth: Starting...');
+  
+  currentUser = await getCurrentUser();
+  console.log('initAuth: currentUser:', currentUser);
+  
+  if (currentUser) {
+    console.log('Logged in as:', currentUser.displayName);
+    
+    // Pre-fill and lock player name with display name
+    const playerNameInput = document.getElementById('player-name');
+    console.log('initAuth: playerNameInput found:', playerNameInput ? 'yes' : 'no');
+    if (playerNameInput) {
+      playerNameInput.value = currentUser.displayName;
+      playerName = currentUser.displayName;
+      playerNameInput.readOnly = true;
+      playerNameInput.title = 'Logged in as ' + currentUser.displayName;
+      playerNameInput.style.backgroundColor = '#2a2a3e';
+      playerNameInput.style.cursor = 'not-allowed';
+      console.log('initAuth: Set and locked player name to:', currentUser.displayName);
+    }
+    
+    // Also set the character sheet player name (locked)
+    const charPlayerName = document.getElementById('char-player-name');
+    if (charPlayerName) {
+      charPlayerName.value = currentUser.displayName;
+      charPlayerName.readOnly = true;
+    }
+    
+    // Show user profile link
+    showUserProfileLink();
+  } else {
+    // Not logged in - redirect to landing page
+    window.location.href = 'http://localhost:3000/landing';
+  }
+}
+
+// Show user profile link when logged in
+function showUserProfileLink() {
+  // Remove existing profile link if any
+  const existingLink = document.getElementById('user-profile-link');
+  if (existingLink) existingLink.remove();
+  
+  // Create user dropdown in header
+  const header = document.querySelector('header');
+  if (header && currentUser) {
+    const userDropdown = document.createElement('div');
+    userDropdown.id = 'user-profile-link';
+    userDropdown.className = 'user-dropdown';
+    userDropdown.innerHTML = `
+      <button class="user-dropdown-btn" id="user-dropdown-toggle">
+        ${currentUser.avatarUrl ? `<img src="${currentUser.avatarUrl}" alt="Avatar" class="user-avatar-small">` : '<i class="fa-solid fa-user"></i>'}
+        <span>${currentUser.displayName}</span>
+        <i class="fa-solid fa-chevron-down"></i>
+      </button>
+      <div class="user-dropdown-menu" id="user-dropdown-menu">
+        <a href="http://localhost:3000/account/" class="dropdown-item">
+          <i class="fa-solid fa-gear"></i> Account Settings
+        </a>
+        <button class="dropdown-item" id="dropdown-logout-btn">
+          <i class="fa-solid fa-sign-out-alt"></i> Logout
+        </button>
+      </div>
+    `;
+    
+    // Add styles for dropdown
+    if (!document.getElementById('user-dropdown-styles')) {
+      const style = document.createElement('style');
+      style.id = 'user-dropdown-styles';
+      style.textContent = `
+        .user-dropdown {
+          position: relative;
+          margin-left: auto;
+        }
+        .user-dropdown-btn {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          background: #2a2a3e;
+          border: 1px solid #444;
+          padding: 8px 12px;
+          border-radius: 6px;
+          color: #e0e0e0;
+          cursor: pointer;
+          font-size: 0.9rem;
+        }
+        .user-dropdown-btn:hover {
+          background: #3a3a4e;
+          border-color: #9d4edd;
+        }
+        .user-avatar-small {
+          width: 24px;
+          height: 24px;
+          border-radius: 50%;
+        }
+        .user-dropdown-menu {
+          display: none;
+          position: absolute;
+          top: 100%;
+          right: 0;
+          background: #2a2a3e;
+          border: 1px solid #444;
+          border-radius: 6px;
+          min-width: 180px;
+          z-index: 1000;
+          margin-top: 5px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        .user-dropdown-menu.show {
+          display: block;
+        }
+        .user-dropdown-menu .dropdown-item {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 10px 15px;
+          color: #e0e0e0;
+          text-decoration: none;
+          border: none;
+          background: none;
+          width: 100%;
+          text-align: left;
+          cursor: pointer;
+          font-size: 0.9rem;
+        }
+        .user-dropdown-menu .dropdown-item:hover {
+          background: #3a3a4e;
+        }
+        .user-dropdown-menu .dropdown-item:first-child {
+          border-radius: 6px 6px 0 0;
+        }
+        .user-dropdown-menu .dropdown-item:last-child {
+          border-radius: 0 0 6px 6px;
+          color: #dc3545;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+    
+    header.appendChild(userDropdown);
+    
+    // Toggle dropdown
+    document.getElementById('user-dropdown-toggle').addEventListener('click', (e) => {
+      e.stopPropagation();
+      document.getElementById('user-dropdown-menu').classList.toggle('show');
+    });
+    
+    // Close on outside click
+    document.addEventListener('click', () => {
+      document.getElementById('user-dropdown-menu')?.classList.remove('show');
+    });
+    
+    // Logout button
+    document.getElementById('dropdown-logout-btn').addEventListener('click', logoutUser);
+  }
+}
+
+// Show user profile modal
+async function showUserProfileModal() {
+  // Create modal if it doesn't exist
+  let modal = document.getElementById('user-profile-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'user-profile-modal';
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+      <div class="modal-content" style="max-width: 500px;">
+        <button type="button" class="modal-close" id="profile-modal-close">&times;</button>
+        <h3><i class="fa-solid fa-user"></i> Your Profile</h3>
+        <div id="profile-content">
+          <p>Loading...</p>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+    
+    document.getElementById('profile-modal-close').onclick = () => {
+      modal.style.display = 'none';
+    };
+    modal.onclick = (e) => {
+      if (e.target === modal) modal.style.display = 'none';
+    };
+  }
+  
+  modal.style.display = 'flex';
+  
+  // Fetch user's rooms
+  const token = getAuthToken();
+  try {
+    const response = await fetch(`${AUTH_URL}/me`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await response.json();
+    
+    const profileContent = document.getElementById('profile-content');
+    profileContent.innerHTML = `
+      <div style="margin-bottom: 15px;">
+        ${data.user.avatarUrl ? `<img src="${data.user.avatarUrl}" alt="Avatar" style="width: 60px; height: 60px; border-radius: 50%; margin-right: 10px; vertical-align: middle;">` : ''}
+        <strong style="font-size: 1.2rem;">${data.user.displayName}</strong>
+        <span style="color: #888; font-size: 0.85rem; display: block; margin-top: 5px;">
+          ${data.user.authType === 'twitch' ? '<i class="fa-brands fa-twitch"></i> Twitch Account' : '<i class="fa-solid fa-key"></i> Local Account'}
+        </span>
+      </div>
+      
+      <h4 style="margin-top: 20px; border-bottom: 1px solid #444; padding-bottom: 5px;">
+        <i class="fa-solid fa-crown"></i> Rooms You GM
+      </h4>
+      <div id="gm-rooms-list" style="margin: 10px 0;">
+        ${data.rooms?.gmRooms?.length ? 
+          data.rooms.gmRooms.map(r => `
+            <div style="background: #2a2a3e; padding: 8px 12px; border-radius: 6px; margin: 5px 0;">
+              <strong>${r.name}</strong> <span style="color: #888; font-size: 0.85rem;">Code: ${r.code}</span>
+            </div>
+          `).join('') : 
+          '<p style="color: #888; font-style: italic;">No rooms yet</p>'
+        }
+      </div>
+      
+      <h4 style="margin-top: 20px; border-bottom: 1px solid #444; padding-bottom: 5px;">
+        <i class="fa-solid fa-users"></i> Rooms You've Joined
+      </h4>
+      <div id="player-rooms-list" style="margin: 10px 0;">
+        ${data.rooms?.playerRooms?.length ? 
+          data.rooms.playerRooms.map(r => `
+            <div style="background: #2a2a3e; padding: 8px 12px; border-radius: 6px; margin: 5px 0;">
+              <strong>${r.name}</strong> <span style="color: #888; font-size: 0.85rem;">Code: ${r.code}</span>
+            </div>
+          `).join('') : 
+          '<p style="color: #888; font-style: italic;">No rooms joined yet</p>'
+        }
+      </div>
+      
+      <button onclick="logoutUser()" style="margin-top: 20px; background: #dc3545; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer;">
+        <i class="fa-solid fa-sign-out-alt"></i> Logout
+      </button>
+      <a href="http://localhost:3000/account?token=${encodeURIComponent(getAuthToken())}" style="display: block; margin-top: 10px; color: #9d4edd; text-decoration: none;">
+        <i class="fa-solid fa-gear"></i> Account Settings
+      </a>
+    `;
+  } catch (error) {
+    console.error('Error fetching profile:', error);
+    document.getElementById('profile-content').innerHTML = '<p style="color: #dc3545;">Error loading profile</p>';
+  }
+}
+
+// Logout function
+async function logoutUser() {
+  try {
+    await fetch(`${AUTH_URL}/logout`, {
+      method: 'POST',
+      credentials: 'include'
+    });
+  } catch (error) {
+    console.error('Logout error:', error);
+  }
+  currentUser = null;
+  window.location.href = 'http://localhost:3000/landing';
+}
+
+// Make logout available globally for inline onclick
+window.logoutUser = logoutUser;
+
+// Call init on page load - wait for DOM to be ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initAuth);
+} else {
+  initAuth();
+}
 
 // ===== API FUNCTIONS =====
 

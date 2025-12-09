@@ -6,18 +6,281 @@
   <title>Dord Roller - D&D Companion</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link rel="stylesheet" href="styles.css">
+  <style>
+    /* User dropdown styles */
+    .user-dropdown {
+      position: relative;
+    }
+    .user-dropdown-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(157, 78, 221, 0.2);
+      border: 1px solid #9d4edd;
+      padding: 8px 14px;
+      border-radius: 8px;
+      color: #e0e0e0;
+      cursor: pointer;
+      font-size: 0.95rem;
+      transition: all 0.2s;
+    }
+    .user-dropdown-btn:hover {
+      background: rgba(157, 78, 221, 0.4);
+    }
+    .user-avatar-small {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+    }
+    .user-dropdown-menu {
+      display: none;
+      position: absolute;
+      top: 100%;
+      right: 0;
+      background: #1a1a2e;
+      border: 1px solid #444;
+      border-radius: 8px;
+      min-width: 200px;
+      z-index: 1000;
+      margin-top: 8px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+    .user-dropdown-menu.show {
+      display: block;
+    }
+    .user-dropdown-menu .dropdown-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px;
+      color: #e0e0e0;
+      text-decoration: none;
+      border: none;
+      background: none;
+      width: 100%;
+      text-align: left;
+      cursor: pointer;
+      font-size: 0.95rem;
+      transition: background 0.2s;
+    }
+    .user-dropdown-menu .dropdown-item:hover {
+      background: rgba(157, 78, 221, 0.2);
+    }
+    .user-dropdown-menu .dropdown-item:first-child {
+      border-radius: 8px 8px 0 0;
+    }
+    .user-dropdown-menu .dropdown-item:last-child {
+      border-radius: 0 0 8px 8px;
+      color: #dc3545;
+      border-top: 1px solid #333;
+    }
+    .login-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #6441a5;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 8px;
+      color: white;
+      cursor: pointer;
+      font-size: 0.95rem;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .login-btn:hover {
+      background: #7d5bbe;
+      transform: translateY(-1px);
+    }
+    .landing-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+    .header-left {
+      display: flex;
+      flex-direction: column;
+    }
+    .header-right {
+      padding-top: 10px;
+    }
+    /* Login required section */
+    .login-required {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 50vh;
+      padding: 40px 20px;
+    }
+    .login-card {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      border: 1px solid #9d4edd;
+      border-radius: 16px;
+      padding: 50px 60px;
+      text-align: center;
+      max-width: 450px;
+      box-shadow: 0 8px 32px rgba(157, 78, 221, 0.2);
+    }
+    .login-icon {
+      font-size: 4rem;
+      color: #9d4edd;
+      margin-bottom: 20px;
+    }
+    .login-card h2 {
+      color: #e0e0e0;
+      margin-bottom: 15px;
+      font-size: 1.8rem;
+    }
+    .login-card p {
+      color: #a0a0a0;
+      margin-bottom: 30px;
+      font-size: 1.1rem;
+      line-height: 1.5;
+    }
+    .login-btn-large {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      background: #6441a5;
+      border: none;
+      padding: 16px 32px;
+      border-radius: 10px;
+      color: white;
+      cursor: pointer;
+      font-size: 1.2rem;
+      text-decoration: none;
+      transition: all 0.3s;
+    }
+    .login-btn-large:hover {
+      background: #7d5bbe;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(100, 65, 165, 0.4);
+    }
+  </style>
 </head>
 <body>
+  <script>
+    // Check auth status using cookie-based authentication
+    document.addEventListener('DOMContentLoaded', async function() {
+      const headerRight = document.getElementById('header-right');
+      
+      // Fetch auth status (cookie sent automatically)
+      try {
+        const response = await fetch('/auth/status', {
+          credentials: 'include'
+        });
+        
+        if (!response.ok) {
+          showLoginRequired();
+          return;
+        }
+        
+        const data = await response.json();
+        
+        if (!data.authenticated) {
+          showLoginRequired();
+          return;
+        }
+        
+        const user = data.user;
+        
+        // Show user dropdown
+        headerRight.innerHTML = `
+          <div class="user-dropdown">
+            <button class="user-dropdown-btn" id="user-dropdown-toggle">
+              ${user.avatarUrl ? '<img src="' + user.avatarUrl + '" alt="Avatar" class="user-avatar-small">' : '<i class="fa-solid fa-user"></i>'}
+              <span>${user.displayName}</span>
+              <i class="fa-solid fa-chevron-down"></i>
+            </button>
+            <div class="user-dropdown-menu" id="user-dropdown-menu">
+              <a href="/account/" class="dropdown-item">
+                <i class="fa-solid fa-gear"></i> Account Settings
+              </a>
+              <button class="dropdown-item" id="logout-btn">
+                <i class="fa-solid fa-sign-out-alt"></i> Logout
+              </button>
+            </div>
+          </div>
+        `;
+        
+        // Toggle dropdown
+        document.getElementById('user-dropdown-toggle').addEventListener('click', function(e) {
+          e.stopPropagation();
+          document.getElementById('user-dropdown-menu').classList.toggle('show');
+        });
+        
+        // Close dropdown on outside click
+        document.addEventListener('click', function() {
+          document.getElementById('user-dropdown-menu')?.classList.remove('show');
+        });
+        
+        // Logout
+        document.getElementById('logout-btn').addEventListener('click', async function() {
+          try {
+            await fetch('/auth/logout', {
+              method: 'POST',
+              credentials: 'include'
+            });
+          } catch (error) {
+            console.error('Logout error:', error);
+          }
+          window.location.reload();
+        });
+
+        // Show main content since user is authenticated
+        showMainContent();
+        
+      } catch (error) {
+        console.error('Error checking auth status:', error);
+        showLoginRequired();
+      }
+    });
+
+    function showLoginRequired() {
+      document.getElementById('login-required').style.display = 'flex';
+      document.getElementById('main-content').style.display = 'none';
+      document.getElementById('header-right').innerHTML = `
+        <a href="/auth/twitch" class="login-btn">
+          <i class="fa-brands fa-twitch"></i> Login with Twitch
+        </a>
+      `;
+    }
+
+    function showMainContent() {
+      document.getElementById('login-required').style.display = 'none';
+      document.getElementById('main-content').style.display = 'block';
+    }
+  </script>
   <div class="landing-container">
     <header class="landing-header">
-      <div class="logo">
-        <i class="fa-solid fa-dice-d20 logo-icon"></i>
-        <h1>Dord Roller</h1>
+      <div class="header-left">
+        <div class="logo">
+          <i class="fa-solid fa-dice-d20 logo-icon"></i>
+          <h1>Dord Roller</h1>
+        </div>
+        <p class="tagline">Your D&D 5e Companion for Dice Rolling & Character Management</p>
       </div>
-      <p class="tagline">Your D&D 5e Companion for Dice Rolling & Character Management</p>
+      <div class="header-right" id="header-right">
+        <!-- User dropdown or login button will be injected here -->
+      </div>
     </header>
 
-    <main class="client-selection">
+    <!-- Login Required Section (shown when not logged in) -->
+    <section class="login-required" id="login-required" style="display: none;">
+      <div class="login-card">
+        <div class="login-icon">
+          <i class="fa-solid fa-lock"></i>
+        </div>
+        <h2>Login Required</h2>
+        <p>Please sign in with your Twitch account to access Dord Roller.</p>
+        <a href="/auth/twitch" class="login-btn-large">
+          <i class="fa-brands fa-twitch"></i> Login with Twitch
+        </a>
+      </div>
+    </section>
+
+    <!-- Main content (shown when logged in) -->
+    <main class="client-selection" id="main-content" style="display: none;">
       <h2>Choose Your Role</h2>
       
       <div class="client-cards">

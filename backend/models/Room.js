@@ -50,6 +50,23 @@ export const Room = {
   },
 
   /**
+   * Find room by code, or create it if it doesn't exist
+   * @param {string} code - Room code
+   * @param {string} name - Room name (used if creating)
+   * @param {string} ownerId - Owner user ID (optional)
+   */
+  async findOrCreate(code, name = 'Unnamed Room', ownerId = null) {
+    // First try to find existing room
+    const existing = await this.findByCode(code);
+    if (existing) {
+      return existing;
+    }
+    
+    // Create new room with the given code
+    return await this.create(name, ownerId, code);
+  },
+
+  /**
    * Find room by code
    */
   async findByCode(code) {
@@ -123,6 +140,14 @@ export const Room = {
    * @param {string} role - 'gm' or 'player'
    */
   async addMember(roomId, userId, role = 'player') {
+    // If trying to add as GM, check if room already has a GM
+    if (role === 'gm') {
+      const existingGMs = await this.getGMs(roomId);
+      if (existingGMs.length > 0 && !existingGMs.some(gm => gm.user_id === userId)) {
+        throw new Error('Room already has a GM');
+      }
+    }
+    
     const memberId = generateHexId(16);
     const result = await pool.query(
       `INSERT INTO room_members (id, room_id, user_id, role)

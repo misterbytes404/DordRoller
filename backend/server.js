@@ -3,6 +3,7 @@ import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import path from 'path';
 import crypto from 'crypto';
 import { setupSocketHandlers } from './sockets/socketHandler.js';
@@ -26,7 +27,13 @@ const io = new Server(httpServer, {
 });
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production' 
+    ? process.env.CORS_ORIGIN 
+    : ['http://localhost:5173', 'http://localhost:5175', 'http://localhost:3000'],
+  credentials: true
+}));
+app.use(cookieParser());
 app.use(express.json());
 
 // Determine if running in Docker (production) or development
@@ -42,6 +49,7 @@ app.use('/landing', express.static(path.join(staticBasePath, isDocker ? 'landing
 app.use('/gm', express.static(path.join(staticBasePath, isDocker ? 'gm' : 'gm-client')));
 app.use('/player', express.static(path.join(staticBasePath, isDocker ? 'player' : 'player-client')));
 app.use('/obs', express.static(path.join(staticBasePath, isDocker ? 'obs' : 'obs-client')));
+app.use('/account', express.static(path.join(staticBasePath, isDocker ? 'account' : 'account')));
 
 // Legacy routes (redirect to new shorter paths)
 app.use('/gm-client', (req, res) => res.redirect('/gm' + req.url));

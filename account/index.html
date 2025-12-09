@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dord Roller - Account Settings</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Header -->
+  <header class="account-header">
+    <div class="header-left">
+      <a href="/landing" class="logo-link">
+        <i class="fa-solid fa-dice-d20 logo-icon"></i>
+        <span class="logo-text">Dord Roller</span>
+      </a>
+    </div>
+    <div class="header-right">
+      <div class="user-dropdown" id="user-dropdown">
+        <button class="user-dropdown-btn" id="user-dropdown-btn">
+          <img src="" alt="Avatar" class="user-avatar" id="header-avatar">
+          <span class="user-name" id="header-username">Loading...</span>
+          <i class="fa-solid fa-chevron-down"></i>
+        </button>
+        <div class="dropdown-menu" id="dropdown-menu">
+          <a href="/landing" class="dropdown-item">
+            <i class="fa-solid fa-home"></i> Home
+          </a>
+          <a href="http://localhost:5173" class="dropdown-item">
+            <i class="fa-solid fa-crown"></i> GM Client
+          </a>
+          <a href="http://localhost:5175" class="dropdown-item">
+            <i class="fa-solid fa-user"></i> Player Client
+          </a>
+          <div class="dropdown-divider"></div>
+          <button class="dropdown-item logout-btn" id="logout-btn">
+            <i class="fa-solid fa-sign-out-alt"></i> Logout
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="account-main">
+    <div class="account-container">
+      <!-- Sidebar Navigation -->
+      <nav class="account-nav">
+        <button class="nav-item active" data-section="profile">
+          <i class="fa-solid fa-user"></i> Profile
+        </button>
+        <button class="nav-item" data-section="rooms">
+          <i class="fa-solid fa-door-open"></i> My Rooms
+        </button>
+        <button class="nav-item" data-section="settings">
+          <i class="fa-solid fa-gear"></i> Settings
+        </button>
+      </nav>
+
+      <!-- Content Sections -->
+      <div class="account-content">
+        <!-- Profile Section -->
+        <section class="content-section active" id="profile-section">
+          <h2><i class="fa-solid fa-user"></i> Profile</h2>
+          
+          <div class="profile-card">
+            <div class="profile-avatar-section">
+              <img src="" alt="Avatar" class="profile-avatar" id="profile-avatar">
+              <div class="avatar-info">
+                <p class="avatar-note">
+                  <i class="fa-brands fa-twitch"></i> Avatar synced from Twitch
+                </p>
+              </div>
+            </div>
+            
+            <div class="profile-form">
+              <div class="form-group">
+                <label for="display-name">Display Name</label>
+                <div class="input-with-button">
+                  <input type="text" id="display-name" placeholder="Your display name">
+                  <button type="button" class="btn btn-primary" id="save-display-name">
+                    <i class="fa-solid fa-save"></i> Save
+                  </button>
+                </div>
+                <p class="form-hint">This name will be shown in game rooms</p>
+              </div>
+
+              <div class="form-group">
+                <label>Account Type</label>
+                <div class="account-type" id="account-type">
+                  <i class="fa-brands fa-twitch"></i> Twitch Account
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>Member Since</label>
+                <div class="member-since" id="member-since">-</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Rooms Section -->
+        <section class="content-section" id="rooms-section">
+          <h2><i class="fa-solid fa-door-open"></i> My Rooms</h2>
+          
+          <!-- GM Rooms -->
+          <div class="rooms-category">
+            <h3><i class="fa-solid fa-crown"></i> Rooms I GM</h3>
+            <div class="rooms-list" id="gm-rooms-list">
+              <div class="loading-placeholder">
+                <i class="fa-solid fa-spinner fa-spin"></i> Loading...
+              </div>
+            </div>
+          </div>
+
+          <!-- Player Rooms -->
+          <div class="rooms-category">
+            <h3><i class="fa-solid fa-users"></i> Rooms I've Joined</h3>
+            <div class="rooms-list" id="player-rooms-list">
+              <div class="loading-placeholder">
+                <i class="fa-solid fa-spinner fa-spin"></i> Loading...
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Settings Section -->
+        <section class="content-section" id="settings-section">
+          <h2><i class="fa-solid fa-gear"></i> Settings</h2>
+          
+          <div class="settings-card">
+            <div class="settings-group">
+              <h3>Danger Zone</h3>
+              <div class="danger-zone">
+                <div class="danger-item">
+                  <div class="danger-info">
+                    <strong>Logout</strong>
+                    <p>Sign out of your account on this device</p>
+                  </div>
+                  <button class="btn btn-danger" id="settings-logout-btn">
+                    <i class="fa-solid fa-sign-out-alt"></i> Logout
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <!-- Toast Notification -->
+  <div class="toast" id="toast"></div>
+
+  <script src="account.js"></script>
+</body>
+</html>

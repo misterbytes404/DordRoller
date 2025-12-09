@@ -440,6 +440,67 @@ class User {
     );
     return result.rows;
   }
+
+  /**
+   * Update user's display name
+   */
+  static async updateDisplayName(userId, displayName) {
+    const displayNameCheck = this.validateDisplayName(displayName);
+    if (!displayNameCheck.valid) {
+      throw new Error(displayNameCheck.error);
+    }
+
+    const result = await pool.query(
+      `UPDATE users 
+       SET display_name = $2
+       WHERE id = $1
+       RETURNING id, auth_type, username, twitch_id, display_name, email, avatar_url, created_at`,
+      [userId, displayNameCheck.sanitized]
+    );
+    
+    return result.rows[0] || null;
+  }
+
+  /**
+   * Delete user account and associated data
+   */
+  static async deleteAccount(userId) {
+    const client = await pool.connect();
+    
+    try {
+      await client.query('BEGIN');
+      
+      // Delete room memberships first
+      await client.query('DELETE FROM room_members WHERE user_id = $1', [userId]);
+      
+      // Delete rooms owned by user (where user was GM)
+      // First get the room IDs
+      const ownedRooms = await client.query(
+        `SELECT r.id FROM rooms r
+         JOIN room_members rm ON r.id = rm.room_id
+         WHERE rm.user_id = $1 AND rm.role = 'gm'`,
+        [userId]
+      );
+      
+      // Delete room members for owned rooms
+      for (const room of ownedRooms.rows) {
+        await client.query('DELETE FROM room_members WHERE room_id = $1', [room.id]);
+        await client.query('DELETE FROM rooms WHERE id = $1', [room.id]);
+      }
+      
+      // Delete the user
+      const result = await client.query('DELETE FROM users WHERE id = $1 RETURNING id', [userId]);
+      
+      await client.query('COMMIT');
+      
+      return result.rowCount > 0;
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
 }
 
 export default User;

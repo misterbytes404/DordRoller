@@ -1,17 +1,33 @@
 import pg from 'pg';
 import dotenv from 'dotenv';
 import crypto from 'crypto';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-dotenv.config();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load .env from backend directory
+dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
 const { Pool } = pg;
 
-// Create connection pool
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  // SSL required for Railway, optional for local
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-});
+// Create connection pool - support both DATABASE_URL and individual vars
+const poolConfig = process.env.DATABASE_URL 
+  ? {
+      connectionString: process.env.DATABASE_URL,
+      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+    }
+  : {
+      host: process.env.DB_HOST || 'localhost',
+      port: parseInt(process.env.DB_PORT || '5432'),
+      database: process.env.DB_NAME || 'dordroller',
+      user: process.env.DB_USER || 'postgres',
+      password: process.env.DB_PASSWORD,
+      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+    };
+
+const pool = new Pool(poolConfig);
 
 // Generate hex ID (8 characters = 4 bytes = 32 bits of randomness)
 export function generateHexId(length = 8) {
@@ -31,7 +47,9 @@ pool.query('SELECT NOW()', (err, res) => {
 export async function initializeDatabase() {
   const client = await pool.connect();
   try {
-    // Drop old tables if they exist (development only - remove for production)
+    // UNCOMMENT BELOW TO RESET DATABASE SCHEMA (destroys all data!)
+    // Only use when you need to change the schema structure
+    /*
     if (process.env.NODE_ENV !== 'production') {
       await client.query(`
         DROP TABLE IF EXISTS room_players CASCADE;
@@ -43,6 +61,7 @@ export async function initializeDatabase() {
       `);
       console.log('🗑️ Dropped old tables for schema update');
     }
+    */
 
     await client.query(`
       -- Users table (supports both Twitch SSO and local accounts)
@@ -178,8 +197,23 @@ export async function initializeDatabase() {
       CREATE INDEX IF NOT EXISTS idx_character_sheets_assigned_user ON character_sheets(assigned_user_id);
       CREATE INDEX IF NOT EXISTS idx_monsters_room_id ON monsters(room_id);
       CREATE INDEX IF NOT EXISTS idx_rooms_code ON rooms(code);
+
+      -- Sessions table for server-side session management
+      CREATE TABLE IF NOT EXISTS sessions (
+        id VARCHAR(64) PRIMARY KEY,
+        user_id VARCHAR(16) REFERENCES users(id) ON DELETE CASCADE,
+        user_agent TEXT,
+        ip_address VARCHAR(45),
+        created_at TIMESTAMP DEFAULT NOW(),
+        expires_at TIMESTAMP NOT NULL,
+        last_active TIMESTAMP DEFAULT NOW()
+      );
+
+      -- Index for session lookups and cleanup
+      CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
+      CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
     `);
-    console.log('✅ Database schema initialized (Twitch SSO, room membership)');
+    console.log('✅ Database schema initialized (Twitch SSO, room membership, sessions)');
   } catch (err) {
     console.error('❌ Failed to initialize database schema:', err.message);
   } finally {

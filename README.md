@@ -8,6 +8,7 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](https://nodejs.org/)
 [![Socket.io](https://img.shields.io/badge/socket.io-4.x-black)](https://socket.io/)
+[![Known Vulnerabilities](https://snyk.io/test/github/misterbytes404/DordRoller/badge.svg)](https://snyk.io/test/github/misterbytes404/DordRoller)
 
 *Roll dice, track monsters, manage characters — all in real-time for your stream.*
 

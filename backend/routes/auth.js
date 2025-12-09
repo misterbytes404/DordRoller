@@ -1,433 +1,405 @@
 import express from 'express';
-import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import User from '../models/User.js';
+import Session from '../models/Session.js';
 
 const router = express.Router();
 
-// Check if auth is enabled
-const AUTH_ENABLED = process.env.AUTH_ENABLED === 'true';
-// Generate a random secret for development if not provided (won't persist across restarts)
-const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
-const JWT_EXPIRES_IN = '7d';
+// Cookie configuration
+const COOKIE_NAME = 'dordroller_session';
+const COOKIE_OPTIONS = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    path: '/'
+};
 
-// Warn if using generated secret
-if (!process.env.JWT_SECRET) {
-  console.warn('⚠️  JWT_SECRET not set in environment. Using randomly generated secret (sessions will not persist across restarts).');
-}
-
-// Twitch OAuth config
-const TWITCH_CLIENT_ID = process.env.TWITCH_CLIENT_ID;
+// Twitch OAuth configuration
+const TWITCH_CLIENT_ID = process.env.TWITCH_CLIENT_ID || 'e79og8hlkoxlbykrd9w8b7cvfkuy4o';
 const TWITCH_CLIENT_SECRET = process.env.TWITCH_CLIENT_SECRET;
 const TWITCH_REDIRECT_URI = process.env.TWITCH_REDIRECT_URI || 'http://localhost:3000/auth/twitch/callback';
 
-/**
- * Middleware to verify JWT token
- */
-export function authenticateToken(req, res, next) {
-  // If auth is disabled, skip authentication
-  if (!AUTH_ENABLED) {
-    req.user = null;
-    return next();
-  }
+// Authentication middleware - validates session cookie
+export const authenticateToken = async (req, res, next) => {
+    try {
+        const sessionToken = req.cookies?.[COOKIE_NAME];
+        
+        if (!sessionToken) {
+            return res.status(401).json({ error: 'Authentication required' });
+        }
 
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+        const sessionData = await Session.validate(sessionToken);
+        if (!sessionData) {
+            res.clearCookie(COOKIE_NAME, COOKIE_OPTIONS);
+            return res.status(401).json({ error: 'Invalid or expired session' });
+        }
 
-  if (!token) {
-    return res.status(401).json({ error: 'Authentication required' });
-  }
-
-  jwt.verify(token, JWT_SECRET, (err, decoded) => {
-    if (err) {
-      return res.status(403).json({ error: 'Invalid or expired token' });
+        req.user = sessionData.user;
+        req.sessionToken = sessionToken;
+        next();
+    } catch (error) {
+        console.error('Auth middleware error:', error);
+        res.status(500).json({ error: 'Authentication error' });
     }
-    req.user = decoded;
-    next();
-  });
-}
+};
 
-/**
- * Optional auth middleware - doesn't require auth but attaches user if present
- */
-export function optionalAuth(req, res, next) {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-
-  if (!token) {
-    req.user = null;
-    return next();
-  }
-
-  jwt.verify(token, JWT_SECRET, (err, decoded) => {
-    req.user = err ? null : decoded;
-    next();
-  });
-}
-
-/**
- * Generate JWT token for user
- */
-function generateToken(user) {
-  return jwt.sign(
-    {
-      id: user.id,
-      authType: user.auth_type,
-      twitchId: user.twitch_id || null,
-      username: user.username || null,
-      displayName: user.display_name,
-      avatarUrl: user.avatar_url
-    },
-    JWT_SECRET,
-    { expiresIn: JWT_EXPIRES_IN }
-  );
-}
-
-// ==================== RATE LIMITING ====================
-// Simple in-memory rate limiter (use Redis in production for distributed systems)
-const rateLimitStore = new Map();
-const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
-const MAX_REQUESTS_PER_WINDOW = 100; // General requests
-const MAX_AUTH_ATTEMPTS_PER_WINDOW = 10; // Auth-specific (stricter)
-
-function rateLimit(key, maxRequests = MAX_REQUESTS_PER_WINDOW) {
-  const now = Date.now();
-  const windowStart = now - RATE_LIMIT_WINDOW_MS;
-  
-  // Get or create entry
-  let entry = rateLimitStore.get(key);
-  if (!entry || entry.windowStart < windowStart) {
-    entry = { windowStart: now, count: 0 };
-  }
-  
-  entry.count++;
-  rateLimitStore.set(key, entry);
-  
-  // Clean up old entries periodically
-  if (Math.random() < 0.01) {
-    for (const [k, v] of rateLimitStore.entries()) {
-      if (v.windowStart < windowStart) {
-        rateLimitStore.delete(k);
-      }
+// Optional auth - doesn't fail if no session, just sets req.user if valid
+export const optionalAuth = async (req, res, next) => {
+    try {
+        const sessionToken = req.cookies?.[COOKIE_NAME];
+        
+        if (sessionToken) {
+            const sessionData = await Session.validate(sessionToken);
+            if (sessionData) {
+                req.user = sessionData.user;
+                req.sessionToken = sessionToken;
+            }
+        }
+        next();
+    } catch (error) {
+        // Continue without auth
+        next();
     }
-  }
-  
-  return entry.count <= maxRequests;
+};
+
+// Helper to create session and set cookie
+async function createSessionAndSetCookie(res, userId, req) {
+    const userAgent = req.headers['user-agent'] || 'Unknown';
+    const ipAddress = req.ip || req.connection?.remoteAddress || 'Unknown';
+    
+    const { sessionToken } = await Session.create(userId, userAgent, ipAddress);
+    res.cookie(COOKIE_NAME, sessionToken, COOKIE_OPTIONS);
+    
+    return sessionToken;
 }
 
-/**
- * Rate limiting middleware for auth endpoints
- */
-function authRateLimiter(req, res, next) {
-  const ip = req.ip || req.connection.remoteAddress || 'unknown';
-  const key = `auth:${ip}`;
-  
-  if (!rateLimit(key, MAX_AUTH_ATTEMPTS_PER_WINDOW)) {
-    return res.status(429).json({ 
-      error: 'Too many authentication attempts. Please try again later.',
-      retryAfter: Math.ceil(RATE_LIMIT_WINDOW_MS / 1000)
-    });
-  }
-  
-  next();
-}
+// ==================== Twitch OAuth Routes ====================
 
-/**
- * GET /auth/status
- * Check if auth is enabled and get current user
- */
-router.get('/status', optionalAuth, (req, res) => {
-  res.json({
-    authEnabled: AUTH_ENABLED,
-    user: req.user,
-    twitchClientId: AUTH_ENABLED ? TWITCH_CLIENT_ID : null
-  });
-});
-
-/**
- * GET /auth/twitch
- * Redirect to Twitch OAuth
- */
+// Initiate Twitch OAuth
 router.get('/twitch', (req, res) => {
-  if (!AUTH_ENABLED) {
-    return res.status(400).json({ error: 'Authentication is not enabled' });
-  }
+    const state = crypto.randomBytes(16).toString('hex');
+    
+    // Store state in a short-lived cookie for CSRF protection
+    res.cookie('twitch_oauth_state', state, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 10 * 60 * 1000 // 10 minutes
+    });
 
-  if (!TWITCH_CLIENT_ID) {
-    return res.status(500).json({ error: 'Twitch OAuth not configured' });
-  }
-
-  const scopes = ['user:read:email'];
-  const state = jwt.sign({ timestamp: Date.now() }, JWT_SECRET, { expiresIn: '10m' });
-  
-  const authUrl = new URL('https://id.twitch.tv/oauth2/authorize');
-  authUrl.searchParams.set('client_id', TWITCH_CLIENT_ID);
-  authUrl.searchParams.set('redirect_uri', TWITCH_REDIRECT_URI);
-  authUrl.searchParams.set('response_type', 'code');
-  authUrl.searchParams.set('scope', scopes.join(' '));
-  authUrl.searchParams.set('state', state);
-
-  res.redirect(authUrl.toString());
-});
-
-/**
- * GET /auth/twitch/callback
- * Handle Twitch OAuth callback
- */
-router.get('/twitch/callback', async (req, res) => {
-  if (!AUTH_ENABLED) {
-    return res.status(400).json({ error: 'Authentication is not enabled' });
-  }
-
-  const { code, state, error, error_description } = req.query;
-
-  // Handle OAuth errors
-  if (error) {
-    console.error('Twitch OAuth error:', error, error_description);
-    return res.redirect(`/landing/?error=${encodeURIComponent(error_description || error)}`);
-  }
-
-  // Verify state
-  try {
-    jwt.verify(state, JWT_SECRET);
-  } catch (err) {
-    return res.redirect('/landing/?error=Invalid%20state%20parameter');
-  }
-
-  try {
-    // Exchange code for access token
-    const tokenResponse = await fetch('https://id.twitch.tv/oauth2/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
+    const params = new URLSearchParams({
         client_id: TWITCH_CLIENT_ID,
-        client_secret: TWITCH_CLIENT_SECRET,
-        code,
-        grant_type: 'authorization_code',
-        redirect_uri: TWITCH_REDIRECT_URI
-      })
+        redirect_uri: TWITCH_REDIRECT_URI,
+        response_type: 'code',
+        scope: 'user:read:email',
+        state: state
     });
 
-    if (!tokenResponse.ok) {
-      const errData = await tokenResponse.json();
-      console.error('Token exchange failed:', errData);
-      return res.redirect('/landing/?error=Token%20exchange%20failed');
-    }
-
-    const tokenData = await tokenResponse.json();
-    const accessToken = tokenData.access_token;
-
-    // Get user info from Twitch
-    const userResponse = await fetch('https://api.twitch.tv/helix/users', {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Client-Id': TWITCH_CLIENT_ID
-      }
-    });
-
-    if (!userResponse.ok) {
-      console.error('Failed to get user info');
-      return res.redirect('/landing/?error=Failed%20to%20get%20user%20info');
-    }
-
-    const userData = await userResponse.json();
-    const twitchUser = userData.data[0];
-
-    // Find or create user in our database
-    const user = await User.findOrCreateFromTwitch(twitchUser);
-
-    // Generate our JWT
-    const token = generateToken(user);
-
-    // Redirect to landing with token (frontend will store it)
-    res.redirect(`/landing/?token=${token}`);
-
-  } catch (err) {
-    console.error('OAuth callback error:', err);
-    res.redirect('/landing/?error=Authentication%20failed');
-  }
+    res.redirect(`https://id.twitch.tv/oauth2/authorize?${params}`);
 });
 
-// ==================== LOCAL AUTHENTICATION ====================
+// Twitch OAuth callback
+router.get('/twitch/callback', async (req, res) => {
+    const { code, state, error } = req.query;
+    const storedState = req.cookies?.twitch_oauth_state;
 
-/**
- * POST /auth/register
- * Register a new local account
- * 
- * Body: { username, email, password, confirmPassword }
- * 
- * Security measures:
- * - Rate limiting to prevent brute force
- * - Password strength validation (OWASP compliant)
- * - Email format validation
- * - Username format validation
- * - SQL injection prevention (parameterized queries in User model)
- * - XSS prevention (validator library sanitization)
- */
-router.post('/register', authRateLimiter, async (req, res) => {
-  try {
-    const { username, email, password, confirmPassword } = req.body;
+    // Clear the state cookie
+    res.clearCookie('twitch_oauth_state');
 
-    // Validate required fields
-    if (!username || !email || !password || !confirmPassword) {
-      return res.status(400).json({ 
-        error: 'All fields are required: username, email, password, confirmPassword' 
-      });
+    if (error) {
+        console.error('Twitch OAuth error:', error);
+        return res.redirect('/landing/?error=oauth_denied');
     }
 
-    // Validate password match
-    if (password !== confirmPassword) {
-      return res.status(400).json({ 
-        error: 'Passwords do not match' 
-      });
+    if (!state || state !== storedState) {
+        console.error('State mismatch - possible CSRF attack');
+        return res.redirect('/landing/?error=invalid_state');
     }
 
-    // Register user (User model handles all validation)
-    const user = await User.register(username, email, password);
-
-    // Generate JWT token
-    const token = generateToken(user);
-
-    res.status(201).json({
-      success: true,
-      message: 'Account created successfully',
-      user: {
-        id: user.id,
-        username: user.username,
-        displayName: user.display_name,
-        email: user.email,
-        authType: user.auth_type
-      },
-      token
-    });
-
-  } catch (err) {
-    console.error('Registration error:', err);
-    
-    // Handle specific validation errors
-    if (err.message.includes('already') || 
-        err.message.includes('Invalid') || 
-        err.message.includes('Password must') ||
-        err.message.includes('Username must')) {
-      return res.status(400).json({ error: err.message });
+    if (!code) {
+        return res.redirect('/landing/?error=no_code');
     }
-    
-    res.status(500).json({ error: 'Registration failed. Please try again.' });
-  }
+
+    try {
+        // Exchange code for access token
+        const tokenResponse = await fetch('https://id.twitch.tv/oauth2/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+                client_id: TWITCH_CLIENT_ID,
+                client_secret: TWITCH_CLIENT_SECRET,
+                code: code,
+                grant_type: 'authorization_code',
+                redirect_uri: TWITCH_REDIRECT_URI
+            })
+        });
+
+        if (!tokenResponse.ok) {
+            const errorData = await tokenResponse.text();
+            console.error('Token exchange failed:', errorData);
+            return res.redirect('/landing/?error=token_exchange_failed');
+        }
+
+        const tokenData = await tokenResponse.json();
+
+        // Get user info from Twitch
+        const userResponse = await fetch('https://api.twitch.tv/helix/users', {
+            headers: {
+                'Authorization': `Bearer ${tokenData.access_token}`,
+                'Client-Id': TWITCH_CLIENT_ID
+            }
+        });
+
+        if (!userResponse.ok) {
+            console.error('Failed to get Twitch user info');
+            return res.redirect('/landing/?error=user_fetch_failed');
+        }
+
+        const userData = await userResponse.json();
+        const twitchUser = userData.data[0];
+
+        // Find or create user using existing model method
+        // Pass the raw Twitch data in the format the model expects
+        const user = await User.findOrCreateFromTwitch({
+            id: twitchUser.id,
+            login: twitchUser.login,
+            display_name: twitchUser.display_name,
+            profile_image_url: twitchUser.profile_image_url,
+            email: twitchUser.email
+        });
+
+        // Create session and set cookie
+        await createSessionAndSetCookie(res, user.id, req);
+
+        // Redirect to landing page
+        res.redirect('/landing/');
+    } catch (error) {
+        console.error('Twitch OAuth callback error:', error);
+        res.redirect('/landing/?error=server_error');
+    }
 });
 
-/**
- * POST /auth/login
- * Login with local account
- * 
- * Body: { usernameOrEmail, password }
- * 
- * Security measures:
- * - Rate limiting to prevent brute force
- * - Generic error messages to prevent user enumeration
- * - Timing-safe password comparison (bcrypt)
- */
-router.post('/login', authRateLimiter, async (req, res) => {
-  try {
-    const { usernameOrEmail, password } = req.body;
+// ==================== Standard Auth Routes ====================
 
-    // Validate required fields
-    if (!usernameOrEmail || !password) {
-      return res.status(400).json({ 
-        error: 'Username/email and password are required' 
-      });
+// Register new user (non-Twitch)
+router.post('/register', async (req, res) => {
+    try {
+        const { username, email, password, displayName } = req.body;
+
+        if (!username || !password) {
+            return res.status(400).json({ error: 'Username and password are required' });
+        }
+
+        // Check if user already exists
+        const existingUsername = await User.findByUsername(username);
+        if (existingUsername) {
+            return res.status(409).json({ error: 'Username already taken' });
+        }
+
+        // Create user using existing model method
+        const user = await User.createLocalUser({
+            username,
+            email,
+            password,
+            displayName: displayName || username
+        });
+
+        // Create session and set cookie
+        await createSessionAndSetCookie(res, user.id, req);
+
+        res.status(201).json({
+            message: 'Registration successful',
+            user: {
+                id: user.id,
+                username: user.username,
+                displayName: user.display_name,
+                email: user.email
+            }
+        });
+    } catch (error) {
+        console.error('Registration error:', error);
+        res.status(400).json({ error: error.message || 'Registration failed' });
     }
-
-    // Attempt login (User model handles validation)
-    const user = await User.login(usernameOrEmail, password);
-
-    // Generate JWT token
-    const token = generateToken(user);
-
-    res.json({
-      success: true,
-      message: 'Login successful',
-      user: {
-        id: user.id,
-        username: user.username,
-        displayName: user.display_name,
-        email: user.email,
-        authType: user.auth_type,
-        avatarUrl: user.avatar_url
-      },
-      token
-    });
-
-  } catch (err) {
-    console.error('Login error:', err);
-    
-    // Always return generic error to prevent user enumeration
-    res.status(401).json({ 
-      error: 'Invalid credentials' 
-    });
-  }
 });
 
-/**
- * GET /auth/me
- * Get current authenticated user's full profile
- */
+// Login
+router.post('/login', async (req, res) => {
+    try {
+        const { username, password } = req.body;
+
+        if (!username || !password) {
+            return res.status(400).json({ error: 'Username and password are required' });
+        }
+
+        const user = await User.authenticateLocal(username, password);
+        if (!user) {
+            return res.status(401).json({ error: 'Invalid username or password' });
+        }
+
+        // Create session and set cookie
+        await createSessionAndSetCookie(res, user.id, req);
+
+        res.json({
+            message: 'Login successful',
+            user: {
+                id: user.id,
+                username: user.username,
+                displayName: user.display_name,
+                email: user.email,
+                avatarUrl: user.avatar_url
+            }
+        });
+    } catch (error) {
+        console.error('Login error:', error);
+        // Don't expose account lockout details to prevent enumeration
+        res.status(401).json({ error: 'Login failed' });
+    }
+});
+
+// Logout
+router.post('/logout', authenticateToken, async (req, res) => {
+    try {
+        // Delete the session from database
+        await Session.delete(req.sessionToken);
+        
+        // Clear the cookie
+        res.clearCookie(COOKIE_NAME, COOKIE_OPTIONS);
+        
+        res.json({ message: 'Logged out successfully' });
+    } catch (error) {
+        console.error('Logout error:', error);
+        // Still clear the cookie even if DB delete fails
+        res.clearCookie(COOKIE_NAME, COOKIE_OPTIONS);
+        res.json({ message: 'Logged out' });
+    }
+});
+
+// Logout all sessions (from all devices)
+router.post('/logout-all', authenticateToken, async (req, res) => {
+    try {
+        await Session.deleteAllForUser(req.user.id);
+        res.clearCookie(COOKIE_NAME, COOKIE_OPTIONS);
+        res.json({ message: 'Logged out from all devices' });
+    } catch (error) {
+        console.error('Logout all error:', error);
+        res.status(500).json({ error: 'Failed to logout from all devices' });
+    }
+});
+
+// ==================== User Info Routes ====================
+
+// Get current user
 router.get('/me', authenticateToken, async (req, res) => {
-  try {
-    const user = await User.findById(req.user.id);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    // Get user's rooms
-    const rooms = await User.getRooms(user.id);
-
     res.json({
-      user: {
-        id: user.id,
-        authType: user.auth_type,
-        twitchId: user.twitch_id || null,
-        twitchUsername: user.twitch_username || null,
-        username: user.username || null,
-        email: user.email || null,
-        displayName: user.display_name,
-        avatarUrl: user.avatar_url,
-        emailVerified: user.email_verified,
-        createdAt: user.created_at
-      },
-      rooms
+        user: {
+            id: req.user.id,
+            username: req.user.username,
+            displayName: req.user.displayName,
+            email: req.user.email,
+            avatarUrl: req.user.avatarUrl,
+            twitchId: req.user.twitchId
+        }
     });
-  } catch (err) {
-    console.error('Error getting user profile:', err);
-    res.status(500).json({ error: 'Failed to get user profile' });
-  }
 });
 
-/**
- * POST /auth/logout
- * Client-side logout (just for API consistency, JWT is stateless)
- */
-router.post('/logout', (req, res) => {
-  // JWT is stateless, so logout is handled client-side by removing the token
-  // This endpoint exists for potential future session blacklisting
-  res.json({ success: true, message: 'Logged out' });
+// Check auth status (doesn't require auth, just reports status)
+router.get('/status', optionalAuth, (req, res) => {
+    if (req.user) {
+        res.json({
+            authenticated: true,
+            user: {
+                id: req.user.id,
+                username: req.user.username,
+                displayName: req.user.displayName,
+                avatarUrl: req.user.avatarUrl
+            }
+        });
+    } else {
+        res.json({ authenticated: false });
+    }
 });
 
-/**
- * GET /auth/rooms
- * Get all rooms for current user
- */
-router.get('/rooms', authenticateToken, async (req, res) => {
-  try {
-    const rooms = await User.getRooms(req.user.id);
-    const gmRooms = rooms.filter(r => r.role === 'gm');
-    const playerRooms = rooms.filter(r => r.role === 'player');
+// Update profile
+router.put('/profile', authenticateToken, async (req, res) => {
+    try {
+        const { displayName } = req.body;
+        
+        // Type validation
+        if (typeof displayName !== 'string') {
+            return res.status(400).json({ error: 'Display name must be a string' });
+        }
+        
+        const trimmedName = displayName.trim();
+        
+        if (trimmedName.length === 0) {
+            return res.status(400).json({ error: 'Display name is required' });
+        }
 
-    res.json({ gmRooms, playerRooms });
-  } catch (err) {
-    console.error('Error getting rooms:', err);
-    res.status(500).json({ error: 'Failed to get rooms' });
-  }
+        if (trimmedName.length > 50) {
+            return res.status(400).json({ error: 'Display name must be 50 characters or less' });
+        }
+
+        const updatedUser = await User.updateDisplayName(req.user.id, trimmedName);
+        
+        res.json({
+            message: 'Profile updated successfully',
+            user: {
+                id: updatedUser.id,
+                username: updatedUser.username,
+                displayName: updatedUser.display_name,
+                email: updatedUser.email,
+                avatarUrl: updatedUser.avatar_url
+            }
+        });
+    } catch (error) {
+        console.error('Profile update error:', error);
+        res.status(500).json({ error: 'Failed to update profile' });
+    }
+});
+
+// Delete account
+router.delete('/account', authenticateToken, async (req, res) => {
+    try {
+        // Delete all sessions first
+        await Session.deleteAllForUser(req.user.id);
+        
+        // Delete the user (cascades to related data)
+        await User.deleteAccount(req.user.id);
+        
+        // Clear the cookie
+        res.clearCookie(COOKIE_NAME, COOKIE_OPTIONS);
+        
+        res.json({ message: 'Account deleted successfully' });
+    } catch (error) {
+        console.error('Account deletion error:', error);
+        res.status(500).json({ error: 'Failed to delete account' });
+    }
+});
+
+// ==================== Active Sessions Routes ====================
+
+// Get active sessions for current user
+router.get('/sessions', authenticateToken, async (req, res) => {
+    try {
+        const sessions = await Session.getActiveForUser(req.user.id);
+        res.json({ sessions });
+    } catch (error) {
+        console.error('Get sessions error:', error);
+        res.status(500).json({ error: 'Failed to get sessions' });
+    }
+});
+
+// Revoke a specific session
+router.delete('/sessions/:sessionId', authenticateToken, async (req, res) => {
+    try {
+        const { sessionId } = req.params;
+        await Session.deleteById(sessionId, req.user.id);
+        res.json({ message: 'Session revoked' });
+    } catch (error) {
+        console.error('Revoke session error:', error);
+        res.status(500).json({ error: 'Failed to revoke session' });
+    }
 });
 
 export default router;
