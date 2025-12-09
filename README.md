@@ -244,7 +244,7 @@ To enable Twitch login:
 
 ---
 
-## 🔑 Local Account Authentication
+## 🔑 Local Account Authentication (NOT ENABLED YET)
 
 As an alternative to Twitch OAuth, users can create local accounts with username and password.
 
