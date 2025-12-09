@@ -289,18 +289,33 @@ router.post('/logout-all', authenticateToken, async (req, res) => {
 
 // ==================== User Info Routes ====================
 
-// Get current user
+// Get current user with their rooms
 router.get('/me', authenticateToken, async (req, res) => {
-    res.json({
-        user: {
-            id: req.user.id,
-            username: req.user.username,
-            displayName: req.user.displayName,
-            email: req.user.email,
-            avatarUrl: req.user.avatarUrl,
-            twitchId: req.user.twitchId
-        }
-    });
+    try {
+        // Fetch user's rooms
+        const [gmRooms, playerRooms] = await Promise.all([
+            User.getGMRooms(req.user.id),
+            User.getPlayerRooms(req.user.id)
+        ]);
+
+        res.json({
+            user: {
+                id: req.user.id,
+                username: req.user.username,
+                displayName: req.user.displayName,
+                email: req.user.email,
+                avatarUrl: req.user.avatarUrl,
+                twitchId: req.user.twitchId
+            },
+            rooms: {
+                gmRooms: gmRooms || [],
+                playerRooms: playerRooms || []
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching user data:', error);
+        res.status(500).json({ error: 'Failed to fetch user data' });
+    }
 });
 
 // Check auth status (doesn't require auth, just reports status)

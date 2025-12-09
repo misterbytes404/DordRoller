@@ -461,6 +461,18 @@ body {
   font-size: 0.85rem;
 }
 
+.room-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.room-card-actions .btn {
+  flex: 1;
+  min-width: 80px;
+}
+
 .empty-state {
   padding: 30px;
   text-align: center;

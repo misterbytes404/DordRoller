@@ -108,6 +108,15 @@ export class MonsterTracker {
     // Add search functionality with debouncing
     const searchInput = document.getElementById('monster-search');
     searchInput.addEventListener('input', (e) => this.debouncedSearch(e.target.value));
+    
+    // Close search results when clicking outside
+    document.addEventListener('click', (e) => {
+      const searchResults = document.getElementById('search-results');
+      const searchContainer = document.querySelector('.search-container') || searchInput.parentElement;
+      if (searchResults && !searchContainer?.contains(e.target)) {
+        searchResults.style.display = 'none';
+      }
+    });
   }
 
   debouncedSearch(query) {
@@ -203,10 +212,14 @@ export class MonsterTracker {
       const infoSpan = document.createElement('span');
       infoSpan.className = 'monster-search-info';
       infoSpan.textContent = `${name} (${monster.source})`;
-      infoSpan.addEventListener('click', (e) => { 
+      
+      // Make the whole li clickable to select monster
+      li.addEventListener('click', (e) => { 
+        // Don't trigger if clicking the quick-add button
+        if (e.target.closest('.quick-add-btn')) return;
         e.preventDefault(); 
-        e.stopPropagation(); 
-        document.getElementById('search-results').style.display = 'none'; 
+        e.stopPropagation();
+        this.hideSearchResults();
         this.selectMonster(name); 
       });
       
@@ -226,6 +239,14 @@ export class MonsterTracker {
       resultsList.appendChild(li);
     });
     resultsList.style.display = 'block';
+  }
+
+  // Helper to hide search results and clear input
+  hideSearchResults() {
+    const searchResults = document.getElementById('search-results');
+    const searchInput = document.getElementById('monster-search');
+    if (searchResults) searchResults.style.display = 'none';
+    if (searchInput) searchInput.value = '';
   }
 
   // Quick add monster directly from bestiary search results
@@ -346,10 +367,8 @@ export class MonsterTracker {
     document.getElementById('monster-actions').value = this.formatActions(monster.action);
     document.getElementById('monster-reactions').value = this.formatActions(monster.reaction);
 
-    // Hide search results
-    document.getElementById('search-results').style.display = 'none';
-    document.getElementById('monster-search').value = '';
-    this.searchMonsters('');
+    // Hide search results and clear search input
+    this.hideSearchResults();
   }
 
   // Format senses from 5etools format

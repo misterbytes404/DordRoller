@@ -5,7 +5,6 @@ import { Server } from 'socket.io';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import path from 'path';
-import crypto from 'crypto';
 import { setupSocketHandlers } from './sockets/socketHandler.js';
 import { initializeDatabase } from './config/database.js';
 import sheetsRouter from './routes/sheets.js';
@@ -66,17 +65,6 @@ app.use('/auth', authRouter);
 app.use('/api', sheetsRouter);
 app.use('/api', roomsRouter);
 app.use('/api', monstersRouter);
-
-// Generate unique room code
-function generateRoomCode() {
-  return crypto.randomBytes(3).toString('hex').toUpperCase(); // 6 characters
-}
-
-// Routes
-app.post('/create-room', (req, res) => {
-  const code = generateRoomCode();
-  res.json({ code });
-});
 
 // Basic health check
 app.get('/health', (req, res) => {

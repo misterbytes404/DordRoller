@@ -93,6 +93,7 @@ function escapeHtml(text) {
 function createRoomCard(room, isGM = false) {
     const card = document.createElement('div');
     card.className = 'room-card';
+    card.dataset.roomId = room.id;
     
     const roomName = room.name || room.room_code || room.code || 'Unnamed Room';
     const roomCode = room.room_code || room.code || '';
@@ -112,9 +113,48 @@ function createRoomCard(room, isGM = false) {
             <button class="btn btn-small btn-primary" onclick="joinRoom('${escapeHtml(roomCode)}', ${isGM})">
                 <i class="fa-solid fa-sign-in-alt"></i> ${isGM ? 'Open' : 'Join'}
             </button>
+            ${isGM ? `
+            <button class="btn btn-small btn-danger" onclick="deleteRoom('${room.id}', '${escapeHtml(roomName).replace(/'/g, "\\'")}')">
+                <i class="fa-solid fa-trash"></i> Delete
+            </button>
+            ` : ''}
         </div>
     `;
     return card;
+}
+
+// Delete a room
+async function deleteRoom(roomId, roomName) {
+    if (!confirm(`Are you sure you want to permanently delete "${roomName}"? This cannot be undone.`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${API_URL}/api/rooms/${roomId}`, {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+        
+        if (response.ok) {
+            showToast('Room deleted successfully', 'success');
+            // Remove the card from the UI
+            const card = document.querySelector(`.room-card[data-room-id="${roomId}"]`);
+            if (card) {
+                card.remove();
+            }
+            // Check if there are no more GM rooms
+            const gmRoomsList = document.getElementById('gm-rooms-list');
+            if (gmRoomsList && gmRoomsList.children.length === 0) {
+                gmRoomsList.innerHTML = '<div class="empty-state"><i class="fa-solid fa-door-closed"></i><p>You haven\'t created any rooms as GM yet.</p></div>';
+            }
+        } else {
+            const data = await response.json();
+            showToast(data.error || 'Failed to delete room', 'error');
+        }
+    } catch (error) {
+        console.error('Error deleting room:', error);
+        showToast('Error deleting room', 'error');
+    }
 }
 
 // Join a room

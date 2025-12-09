@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Room Name Display (Player Client)** — Shows room name and code in a header bar after joining
+- **URL Auto-Join (Player Client)** — Players can join rooms via `?room=CODE` parameter (matches GM client behavior)
+- **Account Page Room Links** — Clicking a room from the account dropdown auto-joins with URL parameter
+
 - **Docker Support** — Containerized deployment for easy self-hosting
   - Multi-stage Dockerfile builds all clients and bundles with backend
   - Single container serves everything (backend + GM/Player/OBS clients)
@@ -125,10 +129,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Save & Sync button** — Now saves to PostgreSQL with visual feedback
 - **Character sheet persistence** — Works across sessions via database
+- **Player room persistence** — Fixed `Room.addPlayer()` → `Room.addMember()` method call
+- **Character sheet save errors** — Added null-safe DOM element access throughout:
+  - `loadCharacterSheet()` — No longer crashes on missing elements
+  - `saveCharacterSheet()` — Uses helper functions for safe value retrieval
+  - Form submit handler — Reuses null-safe save logic
+- **Player tracking** — Now uses authenticated user ID instead of separate players table
+- **Character sheet export/import** — Both features now fully functional
+- **10-second save timeout** — Prevents infinite spinner on save operations
 
-### Known Issues
+### Removed
 
-- **Export download button not functional** — Modal shows but download doesn't trigger
+- **Roll Request Feature** — Removed from player client (GM client no longer has this capability)
+  - Removed `#roll-section` UI with "Waiting for roll request..." display
+  - Removed `assign_roll` socket handler and execute button
+  - Removed `RollRequest` export from shared/events.js
+  - Room info bar moved to character sheet section
+- Deprecated `/api/players` endpoint (player tracking now uses auth system)
 
 ---
 

@@ -214,12 +214,27 @@ let currentRoomId = null; // Database ID for persistence
 // Room management
 document.getElementById('create-room-btn').addEventListener('click', async () => {
   try {
-    const response = await fetch('http://localhost:3000/create-room', { method: 'POST' });
+    const roomNameInput = document.getElementById('room-name-input');
+    const roomName = roomNameInput.value.trim() || `${currentUser?.displayName || 'GM'}'s Room`;
+    
+    // Use the proper API endpoint with credentials to associate room with logged-in user
+    const response = await fetch('http://localhost:3000/api/rooms', { 
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ name: roomName })
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to create room');
+    }
+    
     const data = await response.json();
     socket.emit('gm_join_room', { roomCode: data.code, gmName: currentUser?.displayName || 'DarkLord' });
     currentRoom = data.code;
-    showRoomInfo(data.code);
+    showRoomInfo(data.code, data.id, data.name || roomName);
   } catch (error) {
+    console.error('Error creating room:', error);
     alert('Error creating room');
   }
 });
@@ -230,27 +245,112 @@ document.getElementById('join-room-btn').addEventListener('click', async () => {
     alert('Please enter a room code');
     return;
   }
+  await joinRoomByCode(roomCode);
+});
+
+// Leave room button
+document.getElementById('leave-room-btn')?.addEventListener('click', () => {
+  leaveCurrentRoom();
+});
+
+// Delete room button
+document.getElementById('delete-room-btn')?.addEventListener('click', async () => {
+  if (!currentRoomId) {
+    alert('No room to delete');
+    return;
+  }
+  
+  const roomName = document.getElementById('current-room-name')?.textContent || 'this room';
+  if (!confirm(`Are you sure you want to permanently delete "${roomName}"? This cannot be undone.`)) {
+    return;
+  }
+  
+  await deleteRoom(currentRoomId);
+});
+
+// Delete room function
+async function deleteRoom(roomId) {
   try {
-    const response = await fetch('http://localhost:3000/join-room', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code: roomCode })
+    const response = await fetch(`http://localhost:3000/api/rooms/${roomId}`, {
+      method: 'DELETE',
+      credentials: 'include'
+    });
+    
+    if (response.ok) {
+      alert('Room deleted successfully');
+      leaveCurrentRoom();
+    } else {
+      const data = await response.json();
+      alert(data.error || 'Failed to delete room');
+    }
+  } catch (error) {
+    console.error('Error deleting room:', error);
+    alert('Error deleting room');
+  }
+}
+
+// Join room by code (reusable function)
+async function joinRoomByCode(roomCode) {
+  try {
+    // Use API endpoint to verify room exists
+    const response = await fetch(`http://localhost:3000/api/rooms/code/${roomCode}`, {
+      credentials: 'include'
     });
     if (response.ok) {
+      const room = await response.json();
       socket.emit('gm_join_room', { roomCode, gmName: currentUser?.displayName || 'DarkLord' });
       currentRoom = roomCode;
+      showRoomInfo(roomCode, room.id, room.name);
     } else {
       alert('Invalid room code');
     }
   } catch (error) {
+    console.error('Error joining room:', error);
     alert('Error joining room');
   }
-});
+}
 
-function showRoomInfo(code, roomId = null) {
+// Leave current room
+function leaveCurrentRoom() {
+  if (currentRoom) {
+    socket.emit('leave_room', { roomCode: currentRoom });
+  }
+  currentRoom = null;
+  currentRoomId = null;
+  
+  // Clear monster tracker room ID
+  monsterTracker.setRoomId(null);
+  
+  // Reset UI
+  document.getElementById('room-setup').style.display = 'block';
+  document.getElementById('room-info').style.display = 'none';
+  document.getElementById('room-name-input').value = '';
+  document.getElementById('room-code').value = '';
+  
+  // Clear URL parameter
+  const url = new URL(window.location);
+  url.searchParams.delete('room');
+  window.history.replaceState({}, '', url);
+}
+
+function showRoomInfo(code, roomId = null, roomName = null) {
   document.getElementById('room-setup').style.display = 'none';
   document.getElementById('room-info').style.display = 'block';
   document.getElementById('current-room-code').textContent = code;
+  
+  // Set room ID for persistence
+  if (roomId) {
+    currentRoomId = roomId;
+    // Set room ID for monster tracker persistence
+    monsterTracker.setRoomId(roomId);
+    console.log('Room ID set for persistence:', roomId);
+  }
+  
+  // Show room name
+  const roomNameDisplay = document.getElementById('current-room-name');
+  if (roomNameDisplay) {
+    roomNameDisplay.textContent = roomName || 'Unnamed Room';
+  }
   
   // Show room ID if available
   const roomIdDisplay = document.getElementById('room-id-display');
@@ -264,10 +364,45 @@ function showRoomInfo(code, roomId = null) {
   document.getElementById('obs-link').textContent = obsUrl;
 }
 
+// Check for room code in URL on page load
+function checkUrlForRoom() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const roomCode = urlParams.get('room');
+  if (roomCode) {
+    console.log('Found room code in URL:', roomCode);
+    // Wait a bit for socket connection and auth to initialize
+    setTimeout(() => {
+      joinRoomByCode(roomCode.toUpperCase());
+    }, 500);
+  }
+}
+
+// Call after auth initializes
+const originalInitAuth = initAuth;
+async function initAuthWithRoomCheck() {
+  await originalInitAuth.call(this);
+  checkUrlForRoom();
+}
+
+// Override init to check for room param
+if (document.readyState === 'loading') {
+  document.removeEventListener('DOMContentLoaded', initAuth);
+  document.addEventListener('DOMContentLoaded', initAuthWithRoomCheck);
+} else {
+  // Already loaded, check now
+  checkUrlForRoom();
+}
+
 socket.on('room_joined', (data) => {
-  console.log('Joined room:', data.roomCode, 'DB ID:', data.roomId);
+  console.log('Joined room:', data.roomCode, 'DB ID:', data.roomId, 'Name:', data.roomName);
   currentRoomId = data.roomId || null;
-  showRoomInfo(data.roomCode, data.roomId);
+  
+  // Only update room info if we don't already have a name showing
+  // (prevents overwriting when we already set it from API response)
+  const currentName = document.getElementById('current-room-name')?.textContent;
+  if (!currentName || currentName === '-' || currentName === 'Unnamed Room') {
+    showRoomInfo(data.roomCode, data.roomId, data.roomName);
+  }
   
   // Set room ID for monster tracker persistence
   if (currentRoomId) {

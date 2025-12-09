@@ -56,8 +56,6 @@ Full **D&D 5e character sheet** with automatic calculations:
 - ✨ Spellcasting — Cantrips, prepared spells (1st-9th), slot tracking
 - 🎒 Inventory — Equipment, features, and feats tabs
 
-*Plus:* Receive roll requests from GM and execute them in real-time!
-
 ### 📺 OBS Client
 
 - **Stream-Ready Overlay** — Drop into OBS as a browser source
@@ -278,11 +276,10 @@ Both endpoints return a JWT token identical to Twitch OAuth tokens.
 | **MVP 1** | ✅ Complete | GM-to-OBS Dice Roller |
 | **MVP 2** | ✅ Complete | GM Stat Tracker |
 | **MVP 3** | ✅ Complete | Player Client Integration |
-| **MVP 4** | 🧪 Testing | Database & Authentication |
+| **MVP 4** | ✅ Complete | Database & Authentication |
 
 ### 📋 To Do
 
-- [ ] Test Twitch OAuth & Local Auth flows end-to-end
 - [ ] Deploy to Railway with PostgreSQL
 - [ ] OBS Monster Display (show monster name & HP on stream)
 - [ ] UI polish across all clients
@@ -298,12 +295,16 @@ Both endpoints return a JWT token identical to Twitch OAuth tokens.
 - [x] Quick roll buttons & combat dice system
 - [x] GM Roll Log widget
 - [x] Room-based session management
+- [x] Character sheet import/export
+- [x] Twitch OAuth login flow tested
+- [x] Player room auto-join via URL
+- [x] Room name display in player client
+- [x] Removed redundant roll request feature from player client
 
 ---
 
 ## 🐛 Known Issues
 
-- **Export Download** — Modal opens but download doesn't trigger
 - **Monster Type Parsing** — Some bestiary entries don't parse correctly
 
 ---

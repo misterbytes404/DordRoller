@@ -34,15 +34,6 @@ export const RollData = {
   timestamp: 0
 };
 
-export const RollRequest = {
-  roomCode: '',
-  targetPlayer: '', // Player name or ID
-  diceType: '',
-  label: '',
-  requestId: '', // Unique ID for tracking
-  timestamp: 0
-};
-
 export const EntityData = {
   id: null,
   name: '',

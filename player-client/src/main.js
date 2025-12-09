@@ -11,7 +11,6 @@ const AUTH_URL = 'http://localhost:3000/auth';
 let playerName = '';
 let currentRoom = null;
 let currentRoomId = null; // Database hex ID for the room
-let currentRollRequest = null;
 let currentRollMode = 'normal'; // 'normal', 'advantage', 'disadvantage'
 let currentPlayerId = null;
 let currentSheetId = null;
@@ -301,35 +300,64 @@ async function logoutUser() {
 // Make logout available globally for inline onclick
 window.logoutUser = logoutUser;
 
+// Check for room code in URL and auto-join
+function checkUrlForRoom() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const roomCode = urlParams.get('room');
+  if (roomCode && currentUser) {
+    console.log('Found room code in URL:', roomCode);
+    // Auto-fill the room code and join
+    const roomCodeInput = document.getElementById('room-code');
+    if (roomCodeInput) {
+      roomCodeInput.value = roomCode.toUpperCase();
+    }
+    // Wait a bit for socket connection to be ready, then auto-join
+    setTimeout(() => {
+      joinRoomByCode(roomCode.toUpperCase());
+    }, 500);
+  }
+}
+
+// Join room by code (used for URL auto-join)
+function joinRoomByCode(roomCode) {
+  const name = playerName || currentUser?.displayName;
+  if (roomCode && name) {
+    playerName = name;
+    currentRoom = roomCode;
+    socket.emit('player_join_room', { 
+      roomCode, 
+      playerName: name,
+      playerId: currentUser?.id || null
+    });
+  } else {
+    console.warn('Cannot auto-join: missing room code or player name');
+  }
+}
+
 // Call init on page load - wait for DOM to be ready
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initAuth);
+  document.addEventListener('DOMContentLoaded', async () => {
+    await initAuth();
+    checkUrlForRoom();
+  });
 } else {
-  initAuth();
+  (async () => {
+    await initAuth();
+    checkUrlForRoom();
+  })();
 }
 
 // ===== API FUNCTIONS =====
 
-// Get or create player by name
-async function getOrCreatePlayer(name) {
-  try {
-    const response = await fetch(`${API_URL}/players`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name })
-    });
-    if (!response.ok) throw new Error('Failed to create/get player');
-    return await response.json();
-  } catch (error) {
-    console.error('API Error (getOrCreatePlayer):', error);
-    return null;
-  }
-}
+// Note: Player tracking now uses authenticated user IDs from the auth system
+// The separate /api/players endpoint is deprecated
 
 // Get all character sheets for a room (shared pool - Roll20 style)
 async function getRoomSheets(roomId) {
   try {
-    const response = await fetch(`${API_URL}/rooms/${roomId}/sheets`);
+    const response = await fetch(`${API_URL}/rooms/${roomId}/sheets`, {
+      credentials: 'include'
+    });
     if (!response.ok) throw new Error('Failed to get room sheets');
     return await response.json();
   } catch (error) {
@@ -341,13 +369,21 @@ async function getRoomSheets(roomId) {
 // Create a new character sheet (belongs to room, not player)
 async function createSheet(roomId, sheetData) {
   try {
+    console.log('Creating sheet for room:', roomId);
     const response = await fetch(`${API_URL}/sheets`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ roomId, ...sheetData })
     });
-    if (!response.ok) throw new Error('Failed to create sheet');
-    return await response.json();
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Create sheet failed:', response.status, errorText);
+      throw new Error(`Failed to create sheet: ${response.status}`);
+    }
+    const result = await response.json();
+    console.log('Sheet created successfully:', result.id);
+    return result;
   } catch (error) {
     console.error('API Error (createSheet):', error);
     return null;
@@ -357,13 +393,21 @@ async function createSheet(roomId, sheetData) {
 // Update an existing character sheet
 async function updateSheet(sheetId, sheetData) {
   try {
+    console.log('Updating sheet:', sheetId);
     const response = await fetch(`${API_URL}/sheets/${sheetId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify(sheetData)
     });
-    if (!response.ok) throw new Error('Failed to update sheet');
-    return await response.json();
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Update sheet failed:', response.status, errorText);
+      throw new Error(`Failed to update sheet: ${response.status}`);
+    }
+    const result = await response.json();
+    console.log('Sheet updated successfully:', result.id);
+    return result;
   } catch (error) {
     console.error('API Error (updateSheet):', error);
     return null;
@@ -420,6 +464,8 @@ function showSaveToast(message, type = 'success') {
 
 // ===== UNIFIED SAVE FUNCTION =====
 async function saveToDatabase() {
+  console.log('saveToDatabase called - currentRoomId:', currentRoomId, 'currentSheetId:', currentSheetId);
+  
   // Save to localStorage first (always as backup)
   saveCharacterSheet();
   
@@ -432,18 +478,21 @@ async function saveToDatabase() {
   try {
     if (currentSheetId) {
       // Update existing sheet
+      console.log('Updating existing sheet:', currentSheetId);
       const result = await updateSheet(currentSheetId, characterSheet);
       if (!result) throw new Error('Failed to update sheet');
       console.log('Character sheet updated in database:', result);
       return { success: true, location: 'database', data: result };
     } else {
       // Create new sheet (belongs to the room)
+      console.log('Creating new sheet for room:', currentRoomId);
       const result = await createSheet(currentRoomId, characterSheet);
       if (!result) throw new Error('Failed to create sheet');
       currentSheetId = result.id;
       localStorage.setItem('dordroller_sheet_id', currentSheetId);
       updateCharacterIdDisplay(); // Update the ID display
-      updateCharacterDropdown(); // Refresh dropdown to include new character
+      // Don't await this - it's not critical for save success
+      updateCharacterDropdown().catch(e => console.error('Dropdown update failed:', e));
       console.log('New character sheet created in database:', result);
       return { success: true, location: 'database', data: result };
     }
@@ -694,48 +743,18 @@ document.getElementById('join-btn').addEventListener('click', () => {
     playerName = name;
     currentRoom = roomCode;
     // Join directly via socket - no HTTP validation needed
-    socket.emit('player_join_room', { roomCode, playerName: name });
+    // Include playerId if logged in so the player is persisted to the room
+    socket.emit('player_join_room', { 
+      roomCode, 
+      playerName: name,
+      playerId: currentUser?.id || null
+    });
   } else {
     alert('Please enter both room code and your name!');
   }
 });
 
 // Note: room_joined handler is at the end of the file with sync logic
-
-// Listen for roll assignments (MVP 3)
-socket.on('assign_roll', (rollRequest) => {
-  console.log('Roll request received:', rollRequest);
-  currentRollRequest = rollRequest;
-  
-  document.getElementById('request-text').textContent = 
-    `GM requests: ${rollRequest.label} (${rollRequest.diceType})`;
-  document.getElementById('execute-roll-btn').style.display = 'block';
-});
-
-// Execute the assigned roll
-document.getElementById('execute-roll-btn').addEventListener('click', () => {
-  if (!currentRollRequest) return;
-
-  const sides = parseInt(currentRollRequest.diceType.substring(1));
-  const result = Math.floor(Math.random() * sides) + 1;
-
-  const rollResult = {
-    roomCode: currentRoom,
-    playerName,
-    diceType: currentRollRequest.diceType,
-    result,
-    label: currentRollRequest.label,
-    timestamp: Date.now()
-  };
-
-  socket.emit('player_roll_result', rollResult);
-  
-  document.getElementById('result-display').textContent = 
-    `You rolled: ${result}`;
-  document.getElementById('execute-roll-btn').style.display = 'none';
-  
-  console.log('Roll result sent:', rollResult);
-});
 
 // Character Sheet Functions
 function getProficiencyBonus(level) {
@@ -747,95 +766,116 @@ function getProficiencyBonus(level) {
 }
 
 function loadCharacterSheet() {
-  document.getElementById('char-name').value = characterSheet.name;
-  document.getElementById('char-class').value = characterSheet.class;
-  document.getElementById('char-level').value = characterSheet.level;
-  document.getElementById('char-background').value = characterSheet.background;
-  document.getElementById('char-race').value = characterSheet.race;
-  document.getElementById('char-alignment').value = characterSheet.alignment;
-  document.getElementById('char-xp').value = characterSheet.xp;
-  document.getElementById('char-player-name').value = characterSheet.playerName;
-  document.getElementById('char-hp').value = characterSheet.hp;
-  document.getElementById('char-max-hp').value = characterSheet.maxHp;
-  document.getElementById('char-hit-dice').value = characterSheet.hitDice;
-  document.getElementById('char-ac').value = characterSheet.ac;
-  document.getElementById('char-speed').value = characterSheet.speed;
-  document.getElementById('str-score').value = characterSheet.abilities.str;
-  document.getElementById('dex-score').value = characterSheet.abilities.dex;
-  document.getElementById('con-score').value = characterSheet.abilities.con;
-  document.getElementById('int-score').value = characterSheet.abilities.int;
-  document.getElementById('wis-score').value = characterSheet.abilities.wis;
-  document.getElementById('cha-score').value = characterSheet.abilities.cha;
-  document.getElementById('str-manual-mod').value = characterSheet.manualMods.str || 0;
-  document.getElementById('dex-manual-mod').value = characterSheet.manualMods.dex || 0;
-  document.getElementById('con-manual-mod').value = characterSheet.manualMods.con || 0;
-  document.getElementById('int-manual-mod').value = characterSheet.manualMods.int || 0;
-  document.getElementById('wis-manual-mod').value = characterSheet.manualMods.wis || 0;
-  document.getElementById('cha-manual-mod').value = characterSheet.manualMods.cha || 0;
+  // Helper to safely set input value
+  const setVal = (id, value, fallback = '') => {
+    const el = document.getElementById(id);
+    if (el) el.value = value ?? fallback;
+  };
+  
+  // Helper to safely set checkbox
+  const setCheck = (id, checked) => {
+    const el = document.getElementById(id);
+    if (el) el.checked = checked ?? false;
+  };
+
+  setVal('char-name', characterSheet.name);
+  setVal('char-class', characterSheet.class);
+  setVal('char-level', characterSheet.level, 1);
+  setVal('char-background', characterSheet.background);
+  setVal('char-race', characterSheet.race);
+  setVal('char-alignment', characterSheet.alignment);
+  setVal('char-xp', characterSheet.xp, 0);
+  setVal('char-player-name', characterSheet.playerName);
+  setVal('char-hp', characterSheet.hp, 0);
+  setVal('char-max-hp', characterSheet.maxHp, 0);
+  setVal('char-hit-dice', characterSheet.hitDice);
+  setVal('char-ac', characterSheet.ac, 10);
+  setVal('char-speed', characterSheet.speed);
+  setVal('str-score', characterSheet.abilities?.str, 10);
+  setVal('dex-score', characterSheet.abilities?.dex, 10);
+  setVal('con-score', characterSheet.abilities?.con, 10);
+  setVal('int-score', characterSheet.abilities?.int, 10);
+  setVal('wis-score', characterSheet.abilities?.wis, 10);
+  setVal('cha-score', characterSheet.abilities?.cha, 10);
+  setVal('str-manual-mod', characterSheet.manualMods?.str, 0);
+  setVal('dex-manual-mod', characterSheet.manualMods?.dex, 0);
+  setVal('con-manual-mod', characterSheet.manualMods?.con, 0);
+  setVal('int-manual-mod', characterSheet.manualMods?.int, 0);
+  setVal('wis-manual-mod', characterSheet.manualMods?.wis, 0);
+  setVal('cha-manual-mod', characterSheet.manualMods?.cha, 0);
 
   // Saving throws
-  Object.keys(characterSheet.savingThrows).forEach(ability => {
-    document.getElementById(`${ability}-save-prof`).checked = characterSheet.savingThrows[ability];
-  });
+  if (characterSheet.savingThrows) {
+    Object.keys(characterSheet.savingThrows).forEach(ability => {
+      setCheck(`${ability}-save-prof`, characterSheet.savingThrows[ability]);
+    });
+  }
 
   // Skills
-  Object.keys(characterSheet.skills).forEach(skill => {
-    const id = skill.replace('-', '-');
-    document.getElementById(`${id}-prof`).checked = characterSheet.skills[skill].prof;
-    document.getElementById(`${id}-exp`).checked = characterSheet.skills[skill].exp;
-  });
+  if (characterSheet.skills) {
+    Object.keys(characterSheet.skills).forEach(skill => {
+      const id = skill.replace('-', '-');
+      setCheck(`${id}-prof`, characterSheet.skills[skill]?.prof);
+      setCheck(`${id}-exp`, characterSheet.skills[skill]?.exp);
+    });
+  }
 
   // Armor
-  document.getElementById('char-armor-name').value = characterSheet.armor.name;
-  document.getElementById('char-armor-ac').value = characterSheet.armor.ac;
+  if (characterSheet.armor) {
+    setVal('char-armor-name', characterSheet.armor.name);
+    setVal('char-armor-ac', characterSheet.armor.ac, 0);
+  }
 
   // Weapons
-  characterSheet.weapons.forEach((weapon, index) => {
-    document.getElementById(`weapon-${index + 1}-name`).value = weapon.name;
-    document.getElementById(`weapon-${index + 1}-damage`).value = weapon.damage;
-    document.getElementById(`weapon-${index + 1}-properties`).value = weapon.properties;
-    if (document.getElementById(`weapon-${index + 1}-ability`)) {
-      document.getElementById(`weapon-${index + 1}-ability`).value = weapon.ability || 'str';
-    }
-  });
+  if (characterSheet.weapons) {
+    characterSheet.weapons.forEach((weapon, index) => {
+      setVal(`weapon-${index + 1}-name`, weapon.name);
+      setVal(`weapon-${index + 1}-damage`, weapon.damage);
+      setVal(`weapon-${index + 1}-properties`, weapon.properties);
+      setVal(`weapon-${index + 1}-ability`, weapon.ability, 'str');
+    });
+  }
 
   // Equipment
-  document.getElementById('char-equipment').value = characterSheet.equipment;
+  setVal('char-equipment', characterSheet.equipment);
 
   // Features
-  document.getElementById('char-features').value = characterSheet.features;
+  setVal('char-features', characterSheet.features);
 
   // Spells
-  document.getElementById('char-spells').value = characterSheet.spells;
+  setVal('char-spells', characterSheet.spells);
 
   // Spellcasting Class
-  document.getElementById('spellcasting-class').value = characterSheet.spellcastingClass;
+  setVal('spellcasting-class', characterSheet.spellcastingClass);
 
   // Cantrips
-  characterSheet.cantrips.forEach((cantrip, index) => {
-    document.getElementById(`cantrip-${index + 1}`).value = cantrip;
-  });
+  if (characterSheet.cantrips) {
+    characterSheet.cantrips.forEach((cantrip, index) => {
+      setVal(`cantrip-${index + 1}`, cantrip);
+    });
+  }
 
   // Prepared Spells
-  Object.keys(characterSheet.preparedSpells).forEach(level => {
-    characterSheet.preparedSpells[level].forEach((spell, index) => {
-      document.getElementById(`spell-${level}-${index + 1}`).value = spell;
+  if (characterSheet.preparedSpells) {
+    Object.keys(characterSheet.preparedSpells).forEach(level => {
+      characterSheet.preparedSpells[level].forEach((spell, index) => {
+        setVal(`spell-${level}-${index + 1}`, spell);
+      });
     });
-  });
-
-  // Spell Rules
-  // Removed - now using structured fields
+  }
 
   // Spellcasting
-  document.getElementById('spellcasting-ability').value = characterSheet.spellcastingAbility;
-  document.getElementById('spell-save-dc').value = characterSheet.spellSaveDC;
-  document.getElementById('spell-attack-bonus').value = characterSheet.spellAttackBonus;
+  setVal('spellcasting-ability', characterSheet.spellcastingAbility);
+  setVal('spell-save-dc', characterSheet.spellSaveDC, 0);
+  setVal('spell-attack-bonus', characterSheet.spellAttackBonus, 0);
 
   // Spell Slots
-  characterSheet.spellSlots.forEach((slot, index) => {
-    document.getElementById(`spell-slot-${index + 1}-total`).value = slot.total;
-    document.getElementById(`spell-slot-${index + 1}-expended`).value = slot.expended;
-  });
+  if (characterSheet.spellSlots) {
+    characterSheet.spellSlots.forEach((slot, index) => {
+      setVal(`spell-slot-${index + 1}-total`, slot?.total, 0);
+      setVal(`spell-slot-${index + 1}-expended`, slot?.expended, 0);
+    });
+  }
 
   updateAllCalculations();
 }
@@ -980,108 +1020,13 @@ function validateCharacterSheet() {
   return true;
 }
 
-// Form submit
+// Form submit - uses the same save logic as Save & Sync
 document.getElementById('char-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   if (!validateCharacterSheet()) return;
 
-  characterSheet.name = document.getElementById('char-name').value;
-  characterSheet.class = document.getElementById('char-class').value;
-  characterSheet.level = parseInt(document.getElementById('char-level').value);
-  characterSheet.background = document.getElementById('char-background').value;
-  characterSheet.race = document.getElementById('char-race').value;
-  characterSheet.alignment = document.getElementById('char-alignment').value;
-  characterSheet.xp = parseInt(document.getElementById('char-xp').value) || 0;
-  characterSheet.playerName = document.getElementById('char-player-name').value;
-  characterSheet.hp = parseInt(document.getElementById('char-hp').value);
-  characterSheet.maxHp = parseInt(document.getElementById('char-max-hp').value);
-  characterSheet.hitDice = document.getElementById('char-hit-dice').value;
-  characterSheet.ac = parseInt(document.getElementById('char-ac').value) || 0;
-  characterSheet.speed = document.getElementById('char-speed').value;
-  characterSheet.abilities.str = parseInt(document.getElementById('str-score').value);
-  characterSheet.abilities.dex = parseInt(document.getElementById('dex-score').value);
-  characterSheet.abilities.con = parseInt(document.getElementById('con-score').value);
-  characterSheet.abilities.int = parseInt(document.getElementById('int-score').value);
-  characterSheet.abilities.wis = parseInt(document.getElementById('wis-score').value);
-  characterSheet.abilities.cha = parseInt(document.getElementById('cha-score').value);
-  characterSheet.manualMods.str = parseInt(document.getElementById('str-manual-mod').value) || 0;
-  characterSheet.manualMods.dex = parseInt(document.getElementById('dex-manual-mod').value) || 0;
-  characterSheet.manualMods.con = parseInt(document.getElementById('con-manual-mod').value) || 0;
-  characterSheet.manualMods.int = parseInt(document.getElementById('int-manual-mod').value) || 0;
-  characterSheet.manualMods.wis = parseInt(document.getElementById('wis-manual-mod').value) || 0;
-  characterSheet.manualMods.cha = parseInt(document.getElementById('cha-manual-mod').value) || 0;
-
-  // Saving throws
-  Object.keys(characterSheet.savingThrows).forEach(ability => {
-    characterSheet.savingThrows[ability] = document.getElementById(`${ability}-save-prof`).checked;
-  });
-
-  // Skills
-  Object.keys(characterSheet.skills).forEach(skill => {
-    const id = skill.replace('-', '-');
-    characterSheet.skills[skill].prof = document.getElementById(`${id}-prof`).checked;
-    characterSheet.skills[skill].exp = document.getElementById(`${id}-exp`).checked;
-  });
-
-  // Armor
-  characterSheet.armor.name = document.getElementById('char-armor-name').value;
-  characterSheet.armor.ac = parseInt(document.getElementById('char-armor-ac').value) || 0;
-
-  // Weapons
-  characterSheet.weapons = [];
-  for (let i = 1; i <= 3; i++) {
-    characterSheet.weapons.push({
-      name: document.getElementById(`weapon-${i}-name`).value,
-      damage: document.getElementById(`weapon-${i}-damage`).value,
-      properties: document.getElementById(`weapon-${i}-properties`).value,
-      ability: document.getElementById(`weapon-${i}-ability`) ? document.getElementById(`weapon-${i}-ability`).value : 'str'
-    });
-  }
-
-  // Equipment
-  characterSheet.equipment = document.getElementById('char-equipment').value;
-
-  // Features
-  characterSheet.features = document.getElementById('char-features').value;
-
-  // Spells
-  characterSheet.spells = document.getElementById('char-spells').value;
-
-  // Spellcasting Class
-  characterSheet.spellcastingClass = document.getElementById('spellcasting-class').value;
-
-  // Cantrips
-  characterSheet.cantrips = [];
-  for (let i = 1; i <= 8; i++) {
-    characterSheet.cantrips.push(document.getElementById(`cantrip-${i}`).value);
-  }
-
-  // Prepared Spells
-  characterSheet.preparedSpells = {};
-  for (let level = 1; level <= 9; level++) {
-    characterSheet.preparedSpells[level] = [];
-    const maxSpells = level === 1 ? 15 : level === 2 || level === 3 ? 13 : level === 4 || level === 5 ? 7 : level === 6 || level === 7 ? 5 : level === 8 ? 4 : 3;
-    for (let i = 1; i <= maxSpells; i++) {
-      characterSheet.preparedSpells[level].push(document.getElementById(`spell-${level}-${i}`).value);
-    }
-  }
-
-  // Spell Rules
-  // Removed - now using structured fields
-
-  // Spellcasting
-  characterSheet.spellcastingAbility = document.getElementById('spellcasting-ability').value;
-  characterSheet.spellSaveDC = parseInt(document.getElementById('spell-save-dc').value) || 0;
-  characterSheet.spellAttackBonus = parseInt(document.getElementById('spell-attack-bonus').value) || 0;
-
-  // Spell Slots
-  characterSheet.spellSlots = [];
-  for (let i = 1; i <= 9; i++) {
-    characterSheet.spellSlots.push({
-      total: parseInt(document.getElementById(`spell-slot-${i}-total`).value) || 0,
-      expended: parseInt(document.getElementById(`spell-slot-${i}-expended`).value) || 0
-    });
-  }
+  // Use the null-safe saveCharacterSheet function to update characterSheet object
+  saveCharacterSheet();
   
   // Save to database with confirmation
   const saveBtn = document.querySelector('#char-form button[type="submit"]');
@@ -1090,68 +1035,98 @@ document.getElementById('char-form').addEventListener('submit', async (e) => {
     saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
     saveBtn.disabled = true;
     
-    const result = await saveToDatabase();
-    
-    saveBtn.innerHTML = originalText;
-    saveBtn.disabled = false;
-    
-    if (result.success) {
-      if (result.location === 'database') {
-        showSaveToast('Character saved to server! ✓', 'success');
+    try {
+      // Add timeout to prevent infinite spinner
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Save timed out')), 10000)
+      );
+      
+      const result = await Promise.race([saveToDatabase(), timeoutPromise]);
+      
+      saveBtn.innerHTML = originalText;
+      saveBtn.disabled = false;
+      
+      if (result.success) {
+        if (result.location === 'database') {
+          showSaveToast('Character saved to server! ✓', 'success');
+        } else {
+          showSaveToast('Character saved locally (not connected to server)', 'info');
+        }
+        // Sync to GM if in a room
+        if (currentRoom) {
+          syncPlayerSummary();
+        }
       } else {
-        showSaveToast('Character saved locally (not connected to server)', 'info');
+        showSaveToast('Save failed - saved locally as backup', 'error');
       }
-      // Sync to GM if in a room
-      if (currentRoom) {
-        syncPlayerSummary();
-      }
-    } else {
-      showSaveToast('Save failed - saved locally as backup', 'error');
+    } catch (error) {
+      console.error('Save error or timeout:', error);
+      saveBtn.innerHTML = originalText;
+      saveBtn.disabled = false;
+      showSaveToast('Save timed out - saved locally as backup', 'error');
     }
   }
 });
 
 // Save character sheet to localStorage
 function saveCharacterSheet() {
+  // Helper to safely get input value
+  const getVal = (id, fallback = '') => {
+    const el = document.getElementById(id);
+    return el ? el.value : fallback;
+  };
+  
+  // Helper to safely get checkbox state
+  const getChecked = (id) => {
+    const el = document.getElementById(id);
+    return el ? el.checked : false;
+  };
+  
+  // Helper to safely get numeric value
+  const getNum = (id, fallback = 0) => {
+    const el = document.getElementById(id);
+    return el ? (parseInt(el.value) || fallback) : fallback;
+  };
+
   // First update the characterSheet object from the form
-  characterSheet.name = document.getElementById('char-name').value;
-  characterSheet.class = document.getElementById('char-class').value;
-  characterSheet.level = parseInt(document.getElementById('char-level').value) || 1;
-  characterSheet.background = document.getElementById('char-background').value;
-  characterSheet.race = document.getElementById('char-race').value;
-  characterSheet.alignment = document.getElementById('char-alignment').value;
-  characterSheet.xp = parseInt(document.getElementById('char-xp').value) || 0;
-  characterSheet.playerName = document.getElementById('char-player-name').value;
-  characterSheet.hp = parseInt(document.getElementById('char-hp').value) || 0;
-  characterSheet.maxHp = parseInt(document.getElementById('char-max-hp').value) || 0;
-  characterSheet.hitDice = document.getElementById('char-hit-dice').value;
-  characterSheet.ac = parseInt(document.getElementById('char-ac').value) || 10;
-  characterSheet.speed = document.getElementById('char-speed').value;
+  characterSheet.name = getVal('char-name');
+  characterSheet.class = getVal('char-class');
+  characterSheet.level = getNum('char-level', 1);
+  characterSheet.background = getVal('char-background');
+  characterSheet.race = getVal('char-race');
+  characterSheet.alignment = getVal('char-alignment');
+  characterSheet.xp = getNum('char-xp', 0);
+  characterSheet.playerName = getVal('char-player-name');
+  characterSheet.hp = getNum('char-hp', 0);
+  characterSheet.maxHp = getNum('char-max-hp', 0);
+  characterSheet.hitDice = getVal('char-hit-dice');
+  characterSheet.ac = getNum('char-ac', 10);
+  characterSheet.speed = getVal('char-speed');
   
   // Abilities
   characterSheet.abilities = {
-    str: parseInt(document.getElementById('str-score').value) || 10,
-    dex: parseInt(document.getElementById('dex-score').value) || 10,
-    con: parseInt(document.getElementById('con-score').value) || 10,
-    int: parseInt(document.getElementById('int-score').value) || 10,
-    wis: parseInt(document.getElementById('wis-score').value) || 10,
-    cha: parseInt(document.getElementById('cha-score').value) || 10
+    str: getNum('str-score', 10),
+    dex: getNum('dex-score', 10),
+    con: getNum('con-score', 10),
+    int: getNum('int-score', 10),
+    wis: getNum('wis-score', 10),
+    cha: getNum('cha-score', 10)
   };
   
   // Manual mods
   characterSheet.manualMods = {
-    str: parseInt(document.getElementById('str-manual-mod').value) || 0,
-    dex: parseInt(document.getElementById('dex-manual-mod').value) || 0,
-    con: parseInt(document.getElementById('con-manual-mod').value) || 0,
-    int: parseInt(document.getElementById('int-manual-mod').value) || 0,
-    wis: parseInt(document.getElementById('wis-manual-mod').value) || 0,
-    cha: parseInt(document.getElementById('cha-manual-mod').value) || 0
+    str: getNum('str-manual-mod', 0),
+    dex: getNum('dex-manual-mod', 0),
+    con: getNum('con-manual-mod', 0),
+    int: getNum('int-manual-mod', 0),
+    wis: getNum('wis-manual-mod', 0),
+    cha: getNum('cha-manual-mod', 0)
   };
   
   // Saving throws proficiencies
   const abilities = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
   abilities.forEach(ability => {
-    characterSheet.savingThrows[ability] = document.getElementById(`${ability}-save-prof`).checked;
+    characterSheet.savingThrows[ability] = getChecked(`${ability}-save-prof`);
   });
   
   // Skills
@@ -1160,8 +1135,8 @@ function saveCharacterSheet() {
                       'performance', 'persuasion', 'religion', 'sleight-of-hand', 'stealth', 'survival'];
   skillNames.forEach(skill => {
     characterSheet.skills[skill] = {
-      prof: document.getElementById(`${skill}-prof`)?.checked || false,
-      expertise: document.getElementById(`${skill}-exp`)?.checked || false
+      prof: getChecked(`${skill}-prof`),
+      expertise: getChecked(`${skill}-exp`)
     };
   });
   
@@ -1169,23 +1144,23 @@ function saveCharacterSheet() {
   characterSheet.weapons = [];
   for (let i = 1; i <= 3; i++) {
     characterSheet.weapons.push({
-      name: document.getElementById(`weapon-${i}-name`)?.value || '',
-      damage: document.getElementById(`weapon-${i}-damage`)?.value || '',
-      properties: document.getElementById(`weapon-${i}-properties`)?.value || '',
-      ability: document.getElementById(`weapon-${i}-ability`)?.value || 'str',
-      bonus: parseInt(document.getElementById(`weapon-${i}-bonus`)?.value) || 0
+      name: getVal(`weapon-${i}-name`),
+      damage: getVal(`weapon-${i}-damage`),
+      properties: getVal(`weapon-${i}-properties`),
+      ability: getVal(`weapon-${i}-ability`, 'str'),
+      bonus: getNum(`weapon-${i}-bonus`, 0)
     });
   }
   
   // Equipment and features
-  characterSheet.equipment = document.getElementById('char-equipment')?.value || '';
-  characterSheet.features = document.getElementById('char-features')?.value || '';
-  characterSheet.spells = document.getElementById('char-spells')?.value || '';
+  characterSheet.equipment = getVal('char-equipment');
+  characterSheet.features = getVal('char-features');
+  characterSheet.spells = getVal('char-spells');
   
   // Spellcasting
-  characterSheet.spellcastingAbility = document.getElementById('spellcasting-ability')?.value || '';
-  characterSheet.spellSaveDC = parseInt(document.getElementById('spell-save-dc')?.value) || 0;
-  characterSheet.spellAttackBonus = parseInt(document.getElementById('spell-attack-bonus')?.value) || 0;
+  characterSheet.spellcastingAbility = getVal('spellcasting-ability');
+  characterSheet.spellSaveDC = getNum('spell-save-dc', 0);
+  characterSheet.spellAttackBonus = getNum('spell-attack-bonus', 0);
   
   // Save to localStorage
   try {
@@ -2275,27 +2250,38 @@ document.getElementById('save-sheet-btn')?.addEventListener('click', async () =>
   btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
   btn.disabled = true;
   
-  // Use unified save function
-  const result = await saveToDatabase();
-  
-  // Sync to server for GM display
-  syncPlayerSummary();
-  
-  if (result.success) {
-    if (result.location === 'database') {
-      showSaveToast('Character synced to server! ✓', 'success');
+  try {
+    // Add timeout to prevent infinite spinner
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Save timed out')), 10000)
+    );
+    
+    const result = await Promise.race([saveToDatabase(), timeoutPromise]);
+    
+    // Sync to server for GM display
+    syncPlayerSummary();
+    
+    if (result.success) {
+      if (result.location === 'database') {
+        showSaveToast('Character synced to server! ✓', 'success');
+      } else {
+        showSaveToast('Saved locally (join a room to sync to server)', 'info');
+      }
+      
+      // Visual feedback - success
+      btn.innerHTML = '<i class="fa-solid fa-check"></i> Synced!';
+      btn.classList.add('saved');
     } else {
-      showSaveToast('Saved locally (join a room to sync to server)', 'info');
+      showSaveToast('Server save failed - saved locally as backup', 'error');
+      
+      // Visual feedback - error
+      btn.innerHTML = '<i class="fa-solid fa-exclamation-triangle"></i> Local Only';
+      btn.classList.add('error');
     }
-    
-    // Visual feedback - success
-    btn.innerHTML = '<i class="fa-solid fa-check"></i> Synced!';
-    btn.classList.add('saved');
-  } else {
-    showSaveToast('Server save failed - saved locally as backup', 'error');
-    
-    // Visual feedback - error
-    btn.innerHTML = '<i class="fa-solid fa-exclamation-triangle"></i> Local Only';
+  } catch (error) {
+    console.error('Save error or timeout:', error);
+    showSaveToast('Save timed out - saved locally as backup', 'error');
+    btn.innerHTML = '<i class="fa-solid fa-exclamation-triangle"></i> Timeout';
     btn.classList.add('error');
   }
   
@@ -2530,27 +2516,40 @@ async function loadFromDatabase() {
 }
 
 socket.on('room_joined', async (data) => {
-  console.log('Joined room:', data.roomCode, 'Room ID:', data.roomId);
+  console.log('Joined room:', data.roomCode, 'Room ID:', data.roomId, 'Room Name:', data.roomName);
   document.getElementById('join-section').style.display = 'none';
-  document.getElementById('roll-section').style.display = 'block';
   document.getElementById('character-sheet').style.display = 'block';
+  
+  // Display room info
+  const roomNameEl = document.getElementById('room-name-display');
+  const roomCodeEl = document.getElementById('room-code-display');
+  if (roomNameEl) roomNameEl.textContent = data.roomName || 'Unnamed Room';
+  if (roomCodeEl) roomCodeEl.textContent = `Code: ${data.roomCode}`;
   
   // Store room ID (hex ID from database)
   currentRoomId = data.roomId || null;
   currentRoom = data.roomCode;
   
-  // Get or create player in database (for tracking purposes)
-  const player = await getOrCreatePlayer(playerName);
-  if (player) {
-    currentPlayerId = player.id;
+  // Use authenticated user's ID if available, otherwise try to get/create player
+  if (currentUser && currentUser.id) {
+    currentPlayerId = currentUser.id;
     localStorage.setItem('dordroller_player_id', currentPlayerId);
-    console.log('Player ID:', currentPlayerId);
+    console.log('Using authenticated user ID:', currentPlayerId);
     
     // Send player ID to server for room persistence
     socket.emit('player_update_ids', {
       playerId: currentPlayerId,
       characterSheetId: currentSheetId
     });
+  } else {
+    // Fallback for non-authenticated sessions (if auth is disabled)
+    const savedPlayerId = localStorage.getItem('dordroller_player_id');
+    if (savedPlayerId) {
+      currentPlayerId = savedPlayerId;
+      console.log('Using saved player ID:', currentPlayerId);
+    } else {
+      console.log('No player ID available - some features may be limited');
+    }
   }
   
   // Load character dropdown and try to restore last used character

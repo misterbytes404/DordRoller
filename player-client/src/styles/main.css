@@ -146,23 +146,7 @@ button:hover {
   box-shadow: 0 0 15px var(--color-primary-glow);
 }
 
-#roll-request-info {
-  background: var(--bg-input);
-  padding: 20px;
-  border-radius: 8px;
-  margin-bottom: 15px;
-  text-align: center;
-  border: 1px solid var(--border-color);
-}
 
-#request-text {
-  font-size: 1.2rem;
-  color: var(--color-primary);
-}
-
-#result-display {
-  display: none;
-}
 
 /* Floating Roll Toast */
 .roll-toast {
@@ -1539,6 +1523,33 @@ button:hover {
   .prepared-spells-list {
     grid-template-columns: 1fr;
   }
+}
+
+/* ===== ROOM INFO BAR ===== */
+.room-info-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.room-info-bar .room-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.room-info-bar .room-code {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  font-family: monospace;
+  background: var(--bg-input);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
 }
 
 /* ===== CHARACTER SHEET HEADER WITH SAVE BUTTON ===== */

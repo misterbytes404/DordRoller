@@ -116,6 +116,64 @@ h2 {
   }
 }
 
+/* ===== ROOM MANAGEMENT ===== */
+#room-section {
+  width: 100%;
+}
+
+.create-room-form,
+.join-room-form {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.create-room-form input,
+.join-room-form input {
+  flex: 1;
+  max-width: 400px;
+}
+
+.join-room-divider {
+  text-align: center;
+  color: var(--text-muted);
+  margin: 15px 0;
+  font-size: 0.9rem;
+}
+
+#room-info p {
+  margin: 8px 0;
+}
+
+#room-info a {
+  color: var(--color-primary);
+  word-break: break-all;
+}
+
+.room-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.leave-room-btn {
+  background: #555;
+  color: white;
+}
+
+.leave-room-btn:hover {
+  background: #666;
+}
+
+.delete-room-btn {
+  background: var(--color-danger);
+  color: white;
+}
+
+.delete-room-btn:hover {
+  background: var(--color-danger-light);
+}
+
 input, select, button {
   padding: 10px;
   margin: 5px;
@@ -439,6 +497,24 @@ button:hover {
 #bestiary-search {
   position: relative;
   margin-bottom: 15px;
+}
+
+#bestiary-search label {
+  display: inline;
+}
+
+.search-help-icon {
+  display: inline-block;
+  margin-left: 6px;
+  color: var(--color-accent);
+  cursor: help;
+  font-size: 0.9rem;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.search-help-icon:hover {
+  opacity: 1;
 }
 
 #monster-search {

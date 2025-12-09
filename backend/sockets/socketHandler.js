@@ -66,7 +66,7 @@ export const setupSocketHandlers = (io) => {
         const dbRoom = await Room.findOrCreate(roomCode, gmName || 'GM');
         room.dbId = dbRoom.id; // Store database ID for later use
         console.log(`GM ${socket.id} joined room: ${roomCode} (DB ID: ${dbRoom.id})`);
-        socket.emit('room_joined', { roomCode, role: 'gm', roomId: dbRoom.id });
+        socket.emit('room_joined', { roomCode, role: 'gm', roomId: dbRoom.id, roomName: dbRoom.name });
       } catch (error) {
         console.error('Failed to persist room:', error);
         socket.emit('room_joined', { roomCode, role: 'gm' });
@@ -95,12 +95,15 @@ export const setupSocketHandlers = (io) => {
       
       // Persist player-room association to database if we have IDs
       let dbRoomId = room.dbId;
+      let dbRoomName = room.dbName;
       if (!dbRoomId) {
         try {
           const dbRoom = await Room.findByCode(roomCode);
           if (dbRoom) {
             dbRoomId = dbRoom.id;
+            dbRoomName = dbRoom.name;
             room.dbId = dbRoomId;
+            room.dbName = dbRoomName;
           }
         } catch (error) {
           console.error('Failed to find room in database:', error);
@@ -109,7 +112,7 @@ export const setupSocketHandlers = (io) => {
       
       if (dbRoomId && playerId) {
         try {
-          await Room.addPlayer(dbRoomId, playerId, characterSheetId || null);
+          await Room.addMember(dbRoomId, playerId, 'player');
           console.log(`Player ${playerName} (ID: ${playerId}) persisted to room ${roomCode}`);
         } catch (error) {
           console.error('Failed to persist player to room:', error);
@@ -117,7 +120,7 @@ export const setupSocketHandlers = (io) => {
       }
       
       console.log(`Player ${playerName} (${socket.id}) joined room: ${roomCode}`);
-      socket.emit('room_joined', { roomCode, role: 'player', roomId: dbRoomId });
+      socket.emit('room_joined', { roomCode, role: 'player', roomId: dbRoomId, roomName: dbRoomName });
       
       // Notify GM of new player
       broadcastPlayerList(io, roomCode);
@@ -136,7 +139,7 @@ export const setupSocketHandlers = (io) => {
         // Persist to database
         if (room.dbId && playerId) {
           try {
-            await Room.addPlayer(room.dbId, playerId, characterSheetId || null);
+            await Room.addMember(room.dbId, playerId, 'player');
             console.log(`Player ${socket.id} IDs persisted: playerId=${playerId}, sheetId=${characterSheetId}`);
           } catch (error) {
             console.error('Failed to persist player IDs:', error);

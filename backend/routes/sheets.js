@@ -41,14 +41,17 @@ router.get('/players/:id', async (req, res) => {
 router.post('/sheets', async (req, res) => {
   try {
     const { roomId, ...sheetData } = req.body;
+    console.log('Creating sheet - roomId:', roomId, 'data:', JSON.stringify(sheetData).substring(0, 200));
     if (!roomId) {
       return res.status(400).json({ error: 'Room ID is required' });
     }
     const sheet = await CharacterSheet.create(roomId, sheetData);
+    console.log('Sheet created successfully:', sheet.id);
     res.status(201).json(sheet);
   } catch (err) {
-    console.error('Error creating character sheet:', err);
-    res.status(500).json({ error: 'Failed to create character sheet' });
+    console.error('Error creating character sheet:', err.message);
+    console.error('Full error:', err);
+    res.status(500).json({ error: 'Failed to create character sheet', details: err.message });
   }
 });
 

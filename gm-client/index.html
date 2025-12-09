@@ -21,15 +21,25 @@
       <section id="room-section">
         <h2>Room Management</h2>
         <div id="room-setup">
-          <button id="create-room-btn">Create New Room</button>
-          <br><br>
-          <input type="text" id="room-code" placeholder="Enter Room Code to Join">
-          <button id="join-room-btn">Join Room</button>
+          <div class="create-room-form">
+            <input type="text" id="room-name-input" placeholder="Room Name (e.g., Campaign Session 1)" maxlength="50">
+            <button id="create-room-btn">Create New Room</button>
+          </div>
+          <div class="join-room-divider">— or —</div>
+          <div class="join-room-form">
+            <input type="text" id="room-code" placeholder="Enter Room Code to Join">
+            <button id="join-room-btn">Join Room</button>
+          </div>
         </div>
         <div id="room-info" style="display: none;">
+          <p><strong>Room Name:</strong> <span id="current-room-name">-</span></p>
           <p><strong>Room Code:</strong> <span id="current-room-code"></span></p>
           <p id="room-id-display" class="room-id-text" style="display: none;"></p>
           <p><strong>OBS Overlay URL:</strong> <a id="obs-link" href="" target="_blank">Open Overlay</a></p>
+          <div class="room-actions">
+            <button id="leave-room-btn" class="leave-room-btn"><i class="fa-solid fa-door-open"></i> Leave Room</button>
+            <button id="delete-room-btn" class="delete-room-btn"><i class="fa-solid fa-trash"></i> Delete Room</button>
+          </div>
         </div>
       </section>
 
@@ -140,7 +150,11 @@
       <section id="monster-tracker">
         <h2>Monster Tracker</h2>
         <div id="bestiary-search">
-          <label for="monster-search">Monster Search:</label><br>
+          <label for="monster-search">Monster Search:</label>
+          <span class="search-help-icon" title="Click a monster name to fill the form for customization. Click the + button to instantly add the monster to your encounter.">
+            <i class="fa-solid fa-circle-question"></i>
+          </span>
+          <br>
           <input type="text" id="monster-search" placeholder="Search bestiary by name...">
           <ul id="search-results" style="display: none;"></ul>
         </div>

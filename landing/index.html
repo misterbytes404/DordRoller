@@ -93,16 +93,18 @@
       transform: translateY(-1px);
     }
     .landing-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
+      position: relative;
+      text-align: center;
+      margin-bottom: 20px;
+      padding-top: 50px;
     }
-    .header-left {
-      display: flex;
-      flex-direction: column;
+    .header-title {
+      margin-bottom: 15px;
     }
-    .header-right {
-      padding-top: 10px;
+    .header-user-area {
+      position: absolute;
+      top: 0;
+      right: 0;
     }
     /* Login required section */
     .login-required {
@@ -156,6 +158,86 @@
       transform: translateY(-2px);
       box-shadow: 0 6px 20px rgba(100, 65, 165, 0.4);
     }
+    /* Room selector styles */
+    .room-selector-section {
+      padding: 20px;
+      max-width: 500px;
+      margin: 0 auto 30px auto;
+    }
+    .room-selector-section h3 {
+      color: #e0e0e0;
+      margin-bottom: 15px;
+      font-size: 1.2rem;
+      text-align: center;
+    }
+    .room-quick-access {
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      gap: 12px;
+    }
+    .room-dropdown-container {
+      flex: 1;
+      max-width: 350px;
+    }
+    .room-dropdown {
+      width: 100%;
+      padding: 12px 16px;
+      background: #1a1a2e;
+      border: 1px solid #9d4edd;
+      border-radius: 8px;
+      color: #e0e0e0;
+      font-size: 1rem;
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239d4edd' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+    }
+    .room-dropdown:hover {
+      border-color: #b76ee8;
+      background-color: #1f1f3a;
+    }
+    .room-dropdown:focus {
+      outline: none;
+      border-color: #b76ee8;
+      box-shadow: 0 0 0 2px rgba(157, 78, 221, 0.3);
+    }
+    .room-dropdown option {
+      background: #1a1a2e;
+      color: #e0e0e0;
+      padding: 10px;
+    }
+    .room-dropdown optgroup {
+      background: #12121f;
+      color: #9d4edd;
+      font-weight: bold;
+      font-style: normal;
+    }
+    .room-go-btn {
+      padding: 12px 20px;
+      background: #9d4edd;
+      border: none;
+      border-radius: 8px;
+      color: white;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .room-go-btn:hover:not(:disabled) {
+      background: #b76ee8;
+      transform: translateY(-1px);
+    }
+    .room-go-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .no-rooms-msg {
+      color: #a0a0a0;
+      font-style: italic;
+      text-align: center;
+      padding: 10px;
+    }
   </style>
 </head>
 <body>
@@ -184,38 +266,69 @@
         
         const user = data.user;
         
-        // Show user dropdown
-        headerRight.innerHTML = `
-          <div class="user-dropdown">
-            <button class="user-dropdown-btn" id="user-dropdown-toggle">
-              ${user.avatarUrl ? '<img src="' + user.avatarUrl + '" alt="Avatar" class="user-avatar-small">' : '<i class="fa-solid fa-user"></i>'}
-              <span>${user.displayName}</span>
-              <i class="fa-solid fa-chevron-down"></i>
-            </button>
-            <div class="user-dropdown-menu" id="user-dropdown-menu">
-              <a href="/account/" class="dropdown-item">
-                <i class="fa-solid fa-gear"></i> Account Settings
-              </a>
-              <button class="dropdown-item" id="logout-btn">
-                <i class="fa-solid fa-sign-out-alt"></i> Logout
-              </button>
-            </div>
-          </div>
-        `;
+        // Build user dropdown using DOM manipulation (prevents XSS)
+        const dropdown = document.createElement('div');
+        dropdown.className = 'user-dropdown';
+        
+        const toggleBtn = document.createElement('button');
+        toggleBtn.className = 'user-dropdown-btn';
+        toggleBtn.id = 'user-dropdown-toggle';
+        
+        if (user.avatarUrl) {
+          const avatar = document.createElement('img');
+          avatar.src = user.avatarUrl;
+          avatar.alt = 'Avatar';
+          avatar.className = 'user-avatar-small';
+          toggleBtn.appendChild(avatar);
+        } else {
+          const userIcon = document.createElement('i');
+          userIcon.className = 'fa-solid fa-user';
+          toggleBtn.appendChild(userIcon);
+        }
+        
+        const nameSpan = document.createElement('span');
+        nameSpan.textContent = user.displayName || 'User';
+        toggleBtn.appendChild(nameSpan);
+        
+        const chevron = document.createElement('i');
+        chevron.className = 'fa-solid fa-chevron-down';
+        toggleBtn.appendChild(chevron);
+        
+        dropdown.appendChild(toggleBtn);
+        
+        const menu = document.createElement('div');
+        menu.className = 'user-dropdown-menu';
+        menu.id = 'user-dropdown-menu';
+        
+        const accountLink = document.createElement('a');
+        accountLink.href = '/account/';
+        accountLink.className = 'dropdown-item';
+        accountLink.innerHTML = '<i class="fa-solid fa-gear"></i> Account Settings';
+        menu.appendChild(accountLink);
+        
+        const logoutBtn = document.createElement('button');
+        logoutBtn.className = 'dropdown-item';
+        logoutBtn.id = 'logout-btn';
+        logoutBtn.innerHTML = '<i class="fa-solid fa-sign-out-alt"></i> Logout';
+        menu.appendChild(logoutBtn);
+        
+        dropdown.appendChild(menu);
+        headerRight.innerHTML = '';
+        headerRight.appendChild(dropdown);
         
         // Toggle dropdown
-        document.getElementById('user-dropdown-toggle').addEventListener('click', function(e) {
+        toggleBtn.addEventListener('click', function(e) {
           e.stopPropagation();
-          document.getElementById('user-dropdown-menu').classList.toggle('show');
+          menu.classList.toggle('show');
         });
         
         // Close dropdown on outside click
         document.addEventListener('click', function() {
-          document.getElementById('user-dropdown-menu')?.classList.remove('show');
+          menu.classList.remove('show');
         });
         
         // Logout
-        document.getElementById('logout-btn').addEventListener('click', async function() {
+        logoutBtn.addEventListener('click', async function() {
           try {
             await fetch('/auth/logout', {
               method: 'POST',
@@ -229,6 +342,9 @@
 
         // Show main content since user is authenticated
         showMainContent();
+        
+        // Load user's rooms for quick access
+        loadUserRooms();
         
       } catch (error) {
         console.error('Error checking auth status:', error);
@@ -250,17 +366,96 @@
       document.getElementById('login-required').style.display = 'none';
       document.getElementById('main-content').style.display = 'block';
     }
+
+    async function loadUserRooms() {
+      try {
+        const response = await fetch('/auth/me', {
+          credentials: 'include'
+        });
+        
+        if (!response.ok) {
+          console.log('Failed to fetch user rooms');
+          return;
+        }
+        
+        const data = await response.json();
+        console.log('User data from /auth/me:', data);
+        // Rooms are nested under data.rooms
+        const gmRooms = data.rooms?.gmRooms || [];
+        const playerRooms = data.rooms?.playerRooms || [];
+        
+        const roomSelectorSection = document.getElementById('room-selector-section');
+        
+        // Always show section but with appropriate message
+        roomSelectorSection.style.display = 'block';
+        
+        if (gmRooms.length === 0 && playerRooms.length === 0) {
+          // Show no rooms message
+          document.getElementById('no-rooms-message').style.display = 'block';
+          document.getElementById('gm-room-container').style.display = 'none';
+          document.getElementById('player-room-container').style.display = 'none';
+          return;
+        }
+        
+        document.getElementById('no-rooms-message').style.display = 'none';
+        
+        // Populate single dropdown with optgroups
+        const roomSelect = document.getElementById('room-select');
+        roomSelect.innerHTML = '<option value="">Select a room...</option>';
+        
+        // Add GM rooms optgroup
+        if (gmRooms.length > 0) {
+          const gmGroup = document.createElement('optgroup');
+          gmGroup.label = '👑 Your GM Rooms';
+          gmRooms.forEach(room => {
+            const option = document.createElement('option');
+            option.value = `gm:${room.code}`;
+            option.textContent = `${room.name || 'Unnamed Room'} (${room.code})`;
+            gmGroup.appendChild(option);
+          });
+          roomSelect.appendChild(gmGroup);
+        }
+        
+        // Add player rooms optgroup
+        if (playerRooms.length > 0) {
+          const playerGroup = document.createElement('optgroup');
+          playerGroup.label = '🎮 Rooms You\'ve Joined';
+          playerRooms.forEach(room => {
+            const option = document.createElement('option');
+            option.value = `player:${room.code}`;
+            option.textContent = `${room.name || 'Unnamed Room'} (${room.code})`;
+            playerGroup.appendChild(option);
+          });
+          roomSelect.appendChild(playerGroup);
+        }
+        
+      } catch (error) {
+        console.error('Error loading rooms:', error);
+      }
+    }
+
+    function goToRoom() {
+      const select = document.getElementById('room-select');
+      if (!select.value) return;
+      
+      const [role, code] = select.value.split(':');
+      if (role === 'gm') {
+        window.location.href = `http://localhost:5173?room=${code}`;
+      } else {
+        window.location.href = `http://localhost:5175?room=${code}`;
+      }
+    }
   </script>
   <div class="landing-container">
     <header class="landing-header">
-      <div class="header-left">
+      <div class="header-title">
         <div class="logo">
           <i class="fa-solid fa-dice-d20 logo-icon"></i>
           <h1>Dord Roller</h1>
         </div>
         <p class="tagline">Your D&D 5e Companion for Dice Rolling & Character Management</p>
       </div>
-      <div class="header-right" id="header-right">
+      <div class="header-user-area" id="header-right">
         <!-- User dropdown or login button will be injected here -->
       </div>
     </header>
@@ -281,6 +476,24 @@
 
     <!-- Main content (shown when logged in) -->
     <main class="client-selection" id="main-content" style="display: none;">
+      <!-- Quick Room Access Section -->
+      <section class="room-selector-section" id="room-selector-section" style="display: none;">
+        <h3><i class="fa-solid fa-door-open"></i> Quick Room Access</h3>
+        <p class="no-rooms-msg" id="no-rooms-message" style="display: none;">
+          No rooms yet. Create one from the GM Client or join one as a Player!
+        </p>
+        <div class="room-quick-access">
+          <div class="room-dropdown-container">
+            <select class="room-dropdown" id="room-select">
+              <option value="">Select a room...</option>
+            </select>
+          </div>
+          <button class="room-go-btn" onclick="goToRoom()">
+            <i class="fa-solid fa-arrow-right"></i> Go
+          </button>
+        </div>
+      </section>
+
       <h2>Choose Your Role</h2>
       
       <div class="client-cards">
