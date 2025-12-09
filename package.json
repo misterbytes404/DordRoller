@@ -1,0 +1,39 @@
+{
+  "name": "dordroller",
+  "version": "1.0.0",
+  "description": "A Twitch D&D Stream Management Suite - Roll dice, track monsters, manage characters in real-time",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "gm-client",
+    "player-client"
+  ],
+  "scripts": {
+    "dev:backend": "cd backend && pnpm dev",
+    "dev:gm": "cd gm-client && pnpm dev",
+    "dev:player": "cd player-client && pnpm dev"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/misterbytes404/DordRoller.git"
+  },
+  "keywords": [
+    "dnd",
+    "d&d",
+    "twitch",
+    "dice-roller",
+    "character-sheet",
+    "5e",
+    "tabletop",
+    "rpg"
+  ],
+  "author": "misterbytes404",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/misterbytes404/DordRoller/issues"
+  },
+  "homepage": "https://github.com/misterbytes404/DordRoller#readme",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
