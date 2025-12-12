@@ -9,8 +9,11 @@
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](https://nodejs.org/)
 [![Socket.io](https://img.shields.io/badge/socket.io-4.x-black)](https://socket.io/)
 [![Known Vulnerabilities](https://snyk.io/test/github/misterbytes404/DordRoller/badge.svg)](https://snyk.io/test/github/misterbytes404/DordRoller)
+[![Live](https://img.shields.io/badge/status-live-success?style=flat-square)](https://dordroller-production.up.railway.app)
 
 *Roll dice, track monsters, manage characters — all in real-time for your stream.*
+
+**🚀 Live:** [dordroller-production.up.railway.app](https://dordroller-production.up.railway.app)
 
 </div>
 
@@ -272,10 +275,10 @@ Both endpoints return a JWT token identical to Twitch OAuth tokens.
 | **MVP 2** | ✅ Complete | GM Stat Tracker |
 | **MVP 3** | ✅ Complete | Player Client Integration |
 | **MVP 4** | ✅ Complete | Database & Authentication |
+| **v1.0.0** | ✅ Deployed | Production deployment on Railway |
 
 ### 📋 To Do
 
-- [ ] Deploy to Railway with PostgreSQL
 - [ ] Local account authentication (username/password)
 - [ ] OBS Monster Display (show monster name & HP on stream)
 - [ ] UI polish across all clients
@@ -283,6 +286,9 @@ Both endpoints return a JWT token identical to Twitch OAuth tokens.
 
 ### ✅ Completed
 
+- [x] **v1.0.0 Production Deployment** on Railway (Dec 12, 2025)
+- [x] Privacy: Removed email collection from Twitch OAuth
+- [x] Dynamic URL handling for production/development
 - [x] Twitch OAuth authentication
 - [x] PostgreSQL database with character sheet persistence
 - [x] GM dice roller with room broadcasting
