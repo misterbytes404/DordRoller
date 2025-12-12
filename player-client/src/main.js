@@ -1,11 +1,14 @@
 import { io } from 'socket.io-client';
 
+// Dynamic base URL - works in both dev and production
+const BASE_URL = window.location.origin;
+
 // Initialize socket connection
-const socket = io('http://localhost:3000');
+const socket = io(BASE_URL);
 
 // API base URL
-const API_URL = 'http://localhost:3000/api';
-const AUTH_URL = 'http://localhost:3000/auth';
+const API_URL = `${BASE_URL}/api`;
+const AUTH_URL = `${BASE_URL}/auth`;
 
 // State
 let playerName = '';
@@ -106,7 +109,7 @@ async function initAuth() {
     showUserProfileLink();
   } else {
     // Not logged in - redirect to landing page
-    window.location.href = 'http://localhost:3000/landing';
+    window.location.href = `${BASE_URL}/landing`;
   }
 }
 
@@ -134,7 +137,7 @@ function showUserProfileLink() {
         <i class="fa-solid fa-chevron-down"></i>
       </button>
       <div class="user-dropdown-menu" id="user-dropdown-menu">
-        <a href="http://localhost:3000/account/" class="dropdown-item">
+        <a href="/account/" class="dropdown-item">
           <i class="fa-solid fa-gear"></i> Account Settings
         </a>
         <button class="dropdown-item" id="dropdown-logout-btn">
@@ -323,7 +326,7 @@ async function showUserProfileModal() {
       <button onclick="logoutUser()" style="margin-top: 20px; background: #dc3545; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer;">
         <i class="fa-solid fa-sign-out-alt"></i> Logout
       </button>
-      <a href="http://localhost:3000/account?token=${encodeURIComponent(getAuthToken())}" style="display: block; margin-top: 10px; color: #9d4edd; text-decoration: none;">
+      <a href="/account/" style="display: block; margin-top: 10px; color: #9d4edd; text-decoration: none;">
         <i class="fa-solid fa-gear"></i> Account Settings
       </a>
     `;
@@ -344,7 +347,7 @@ async function logoutUser() {
     console.error('Logout error:', error);
   }
   currentUser = null;
-  window.location.href = 'http://localhost:3000/landing';
+  window.location.href = `${BASE_URL}/landing`;
 }
 
 // Make logout available globally for inline onclick

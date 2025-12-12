@@ -4,11 +4,14 @@ import { MonsterTracker } from './modules/monsterTracker.js';
 import { PlayerTracker } from './modules/playerTracker.js';
 import { RollLog } from './modules/rollLog.js';
 
+// Dynamic base URL - works in both dev and production
+const BASE_URL = window.location.origin;
+
 // Initialize socket connection
-const socket = io('http://localhost:3000');
+const socket = io(BASE_URL);
 
 // Auth URLs
-const AUTH_URL = 'http://localhost:3000/auth';
+const AUTH_URL = `${BASE_URL}/auth`;
 
 // State
 let currentRoom = null;
@@ -44,7 +47,7 @@ async function initAuth() {
     showUserDropdown();
   } else {
     // Not logged in - redirect to landing page
-    window.location.href = 'http://localhost:3000/landing';
+    window.location.href = `${BASE_URL}/landing`;
   }
 }
 
@@ -68,7 +71,7 @@ function showUserDropdown() {
       <i class="fa-solid fa-chevron-down"></i>
     </button>
     <div class="user-dropdown-menu" id="user-dropdown-menu">
-      <a href="http://localhost:3000/account/" class="dropdown-item">
+      <a href="/account/" class="dropdown-item">
         <i class="fa-solid fa-gear"></i> Account Settings
       </a>
       <button class="dropdown-item logout-btn" id="dropdown-logout-btn">
@@ -184,7 +187,7 @@ function showUserDropdown() {
       console.error('Logout error:', error);
     }
     currentUser = null;
-    window.location.href = 'http://localhost:3000/landing';
+    window.location.href = `${BASE_URL}/landing`;
   });
 }
 
@@ -218,7 +221,7 @@ document.getElementById('create-room-btn').addEventListener('click', async () =>
     const roomName = roomNameInput.value.trim() || `${currentUser?.displayName || 'GM'}'s Room`;
     
     // Use the proper API endpoint with credentials to associate room with logged-in user
-    const response = await fetch('http://localhost:3000/api/rooms', { 
+    const response = await fetch(`${BASE_URL}/api/rooms`, { 
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -271,7 +274,7 @@ document.getElementById('delete-room-btn')?.addEventListener('click', async () =
 // Delete room function
 async function deleteRoom(roomId) {
   try {
-    const response = await fetch(`http://localhost:3000/api/rooms/${roomId}`, {
+    const response = await fetch(`${BASE_URL}/api/rooms/${roomId}`, {
       method: 'DELETE',
       credentials: 'include'
     });
@@ -293,7 +296,7 @@ async function deleteRoom(roomId) {
 async function joinRoomByCode(roomCode) {
   try {
     // Use API endpoint to verify room exists
-    const response = await fetch(`http://localhost:3000/api/rooms/code/${roomCode}`, {
+    const response = await fetch(`${BASE_URL}/api/rooms/code/${roomCode}`, {
       credentials: 'include'
     });
     if (response.ok) {
@@ -359,7 +362,7 @@ function showRoomInfo(code, roomId = null, roomName = null) {
     roomIdDisplay.style.display = 'block';
   }
   
-  const obsUrl = `http://localhost:3000/obs-client/index.html?room=${code}`;
+  const obsUrl = `${BASE_URL}/obs?room=${code}`;
   document.getElementById('obs-link').href = obsUrl;
   document.getElementById('obs-link').textContent = obsUrl;
 }

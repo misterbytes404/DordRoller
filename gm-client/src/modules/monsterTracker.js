@@ -1,7 +1,7 @@
 // MVP 2: Monster tracking functionality (UI-focused with database persistence)
 
-// API base URL
-const API_URL = 'http://localhost:3000/api';
+// Dynamic API base URL - works in both dev and production
+const API_URL = `${window.location.origin}/api`;
 
 export class MonsterTracker {
   constructor() {

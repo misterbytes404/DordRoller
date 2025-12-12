@@ -159,16 +159,8 @@ async function deleteRoom(roomId, roomName) {
 
 // Join a room
 function joinRoom(roomCode, asGM = false) {
-    // Use dev ports in development, regular paths in production
-    const isDev = window.location.port === '3000';
-    let clientUrl;
-    
-    if (isDev) {
-        clientUrl = asGM ? 'http://localhost:5173' : 'http://localhost:5175';
-    } else {
-        clientUrl = asGM ? '/gm' : '/player';
-    }
-    
+    // Always use relative paths - works in both dev and production
+    const clientUrl = asGM ? '/gm' : '/player';
     const url = `${clientUrl}?room=${encodeURIComponent(roomCode)}`;
     window.location.href = url;
 }
