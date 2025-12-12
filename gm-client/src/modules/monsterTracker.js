@@ -175,7 +175,7 @@ export class MonsterTracker {
       'bestiary-ua-2030-11-05.json', 'bestiary-ua-2030-12-03.json'
     ];
 
-    const promises = files.map(file => fetch(`/data/bestiary/${file}`).then(r => r.json()).catch(() => null));
+    const promises = files.map(file => fetch(`${import.meta.env.BASE_URL}data/bestiary/${file}`).then(r => r.json()).catch(() => null));
     const data = await Promise.all(promises);
     data.forEach(fileData => {
       if (fileData && fileData.monster) {
