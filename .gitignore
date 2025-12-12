@@ -65,7 +65,7 @@ jspm_packages/
 # pnpm
 .pnpm/
 .pnpm-debug.log*
-pnpm-lock.yaml
+# Note: pnpm-lock.yaml files are committed for reproducible builds
 
 # Next.js build output
 .next
