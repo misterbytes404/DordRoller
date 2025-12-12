@@ -106,13 +106,17 @@ Railway automatically creates database tables on first startup. No manual SQL re
 
 #### Environment Variables
 
-| Variable | Required | Description |
-|----------|----------|-------------|
+| Variable | Required | Value / Description |
+|----------|----------|---------------------|
+| `NODE_ENV` | Yes | `production` |
+| `DATABASE_URL` | Yes | `${{Postgres.DATABASE_URL}}` (use Railway's variable reference) |
 | `AUTH_ENABLED` | Yes | `true` to require login, `false` for anonymous |
-| `JWT_SECRET` | If auth enabled | Random string for session tokens. Generate: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
+| `JWT_SECRET` | If auth enabled | Generate: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
+| `SESSION_SECRET` | If auth enabled | Generate another random string (same command as above) |
 | `TWITCH_CLIENT_ID` | For Twitch login | From [Twitch Developer Console](https://dev.twitch.tv/console) |
 | `TWITCH_CLIENT_SECRET` | For Twitch login | From Twitch Developer Console |
 | `TWITCH_REDIRECT_URI` | For Twitch login | `https://your-app.railway.app/auth/twitch/callback` |
+| `CORS_ORIGIN` | Yes | `https://your-app.railway.app` (your Railway URL, no trailing slash) |
 
 #### 🎮 Setting Up Twitch Login for Railway
 
