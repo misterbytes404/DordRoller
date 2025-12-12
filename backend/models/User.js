@@ -330,7 +330,7 @@ class User {
    * @returns {Object} User record
    */
   static async findOrCreateFromTwitch(twitchData) {
-    const { id: twitchId, login: twitchUsername, display_name: displayName, profile_image_url: avatarUrl, email } = twitchData;
+    const { id: twitchId, login: twitchUsername, display_name: displayName, profile_image_url: avatarUrl } = twitchData;
     
     // First try to find existing user
     const existingUser = await this.findByTwitchId(twitchId);
@@ -342,10 +342,10 @@ class User {
     // Create new user
     const id = generateHexId(16);
     const result = await pool.query(
-      `INSERT INTO users (id, auth_type, twitch_id, display_name, avatar_url, email)
-       VALUES ($1, 'twitch', $2, $3, $4, $5)
-       RETURNING id, auth_type, twitch_id, display_name, email, avatar_url, created_at`,
-      [id, twitchId, displayName || twitchUsername, avatarUrl, email]
+      `INSERT INTO users (id, auth_type, twitch_id, display_name, avatar_url)
+       VALUES ($1, 'twitch', $2, $3, $4)
+       RETURNING id, auth_type, twitch_id, display_name, avatar_url, created_at`,
+      [id, twitchId, displayName || twitchUsername, avatarUrl]
     );
     
     return result.rows[0];
@@ -356,7 +356,7 @@ class User {
    */
   static async findByTwitchId(twitchId) {
     const result = await pool.query(
-      `SELECT id, auth_type, twitch_id, display_name, email, avatar_url, created_at 
+      `SELECT id, auth_type, twitch_id, display_name, avatar_url, created_at 
        FROM users WHERE twitch_id = $1`,
       [twitchId]
     );
@@ -368,7 +368,7 @@ class User {
    */
   static async findById(id) {
     const result = await pool.query(
-      `SELECT id, auth_type, username, twitch_id, display_name, email, avatar_url, created_at 
+      `SELECT id, auth_type, username, twitch_id, display_name, avatar_url, created_at 
        FROM users WHERE id = $1`,
       [id]
     );
@@ -379,14 +379,14 @@ class User {
    * Update user from Twitch data (on each login)
    */
   static async updateFromTwitch(userId, twitchData) {
-    const { display_name: displayName, profile_image_url: avatarUrl, email } = twitchData;
+    const { display_name: displayName, profile_image_url: avatarUrl } = twitchData;
     
     const result = await pool.query(
       `UPDATE users 
-       SET display_name = $2, avatar_url = $3, email = $4, last_login = NOW()
+       SET display_name = $2, avatar_url = $3, last_login = NOW()
        WHERE id = $1
-       RETURNING id, auth_type, twitch_id, display_name, email, avatar_url, created_at`,
-      [userId, displayName, avatarUrl, email]
+       RETURNING id, auth_type, twitch_id, display_name, avatar_url, created_at`,
+      [userId, displayName, avatarUrl]
     );
     
     return result.rows[0];

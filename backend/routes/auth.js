@@ -92,7 +92,7 @@ router.get('/twitch', (req, res) => {
         client_id: TWITCH_CLIENT_ID,
         redirect_uri: TWITCH_REDIRECT_URI,
         response_type: 'code',
-        scope: 'user:read:email',
+        scope: '',
         state: state
     });
 
@@ -161,12 +161,12 @@ router.get('/twitch/callback', async (req, res) => {
 
         // Find or create user using existing model method
         // Pass the raw Twitch data in the format the model expects
+        // Note: We don't request or store email for privacy
         const user = await User.findOrCreateFromTwitch({
             id: twitchUser.id,
             login: twitchUser.login,
             display_name: twitchUser.display_name,
-            profile_image_url: twitchUser.profile_image_url,
-            email: twitchUser.email
+            profile_image_url: twitchUser.profile_image_url
         });
 
         // Create session and set cookie
@@ -303,7 +303,6 @@ router.get('/me', authenticateToken, async (req, res) => {
                 id: req.user.id,
                 username: req.user.username,
                 displayName: req.user.displayName,
-                email: req.user.email,
                 avatarUrl: req.user.avatarUrl,
                 twitchId: req.user.twitchId
             },
@@ -363,7 +362,6 @@ router.put('/profile', authenticateToken, async (req, res) => {
                 id: updatedUser.id,
                 username: updatedUser.username,
                 displayName: updatedUser.display_name,
-                email: updatedUser.email,
                 avatarUrl: updatedUser.avatar_url
             }
         });

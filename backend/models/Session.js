@@ -50,7 +50,7 @@ class Session {
 
     const result = await pool.query(
       `SELECT s.*, u.id as user_id, u.auth_type, u.twitch_id, u.username, 
-              u.display_name, u.email, u.avatar_url, u.created_at as user_created_at
+              u.display_name, u.avatar_url, u.created_at as user_created_at
        FROM sessions s
        JOIN users u ON s.user_id = u.id
        WHERE s.id = $1 AND s.expires_at > NOW()`,
@@ -77,7 +77,6 @@ class Session {
         twitchId: session.twitch_id,
         username: session.username,
         displayName: session.display_name,
-        email: session.email,
         avatarUrl: session.avatar_url,
         createdAt: session.user_created_at
       }
