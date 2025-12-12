@@ -440,9 +440,9 @@
       
       const [role, code] = select.value.split(':');
       if (role === 'gm') {
-        window.location.href = `http://localhost:5173?room=${code}`;
+        window.location.href = `/gm?room=${code}`;
       } else {
-        window.location.href = `http://localhost:5175?room=${code}`;
+        window.location.href = `/player?room=${code}`;
       }
     }
   </script>
@@ -498,7 +498,7 @@
       
       <div class="client-cards">
         <!-- GM Client Card -->
-        <a href="http://localhost:5173" class="client-card gm-card">
+        <a href="/gm" class="client-card gm-card">
           <div class="card-icon">
             <i class="fa-solid fa-crown"></i>
           </div>
@@ -520,7 +520,7 @@
         </a>
 
         <!-- Player Client Card -->
-        <a href="http://localhost:5175" class="client-card player-card">
+        <a href="/player" class="client-card player-card">
           <div class="card-icon">
             <i class="fa-solid fa-user-group"></i>
           </div>
