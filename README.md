@@ -90,14 +90,19 @@ The easiest and most secure way to deploy. No server management, automatic HTTPS
 > ⚠️ **Important:** You must fork this repository to your own GitHub account. Deploying directly from the original repo means you won't be able to customize settings, update your instance, or control your data. **Fork first = you own your installation.**
 
 1. **Fork this repository** to your GitHub account (click "Fork" button top-right)
-2. Go to [Railway](https://railway.app/) and create an account
+2. Go to [Railway](https://railway.app/) and create an account (GitHub login recommended)
 3. Click **"New Project"** → **"Deploy from GitHub repo"**
-4. Select **your forked repository** (not the original)
-5. Railway auto-detects the Dockerfile and builds
-6. Add a **PostgreSQL** plugin from the Railway dashboard
-7. Set environment variables in Railway (see below)
+4. Select **your forked repository** (not the original) and click **Deploy**
+5. Railway auto-detects the Dockerfile and starts building
+6. **Add PostgreSQL:** Click **"+ New"** in your project → **"Database"** → **"Add PostgreSQL"**
+7. **Link the database:** Click on your app service → **Variables** → **"Add Variable Reference"** → Select `DATABASE_URL` from the PostgreSQL service
+8. **Set environment variables** in Railway (see table below)
+9. **Redeploy:** After adding variables, Railway will automatically redeploy
+10. **Get your URL:** Once deployed, click on your service → **Settings** → Copy your `*.railway.app` URL
 
-Railway automatically provides `DATABASE_URL` when you add PostgreSQL.
+Railway automatically creates database tables on first startup. No manual SQL required.
+
+> 💡 **Tip:** Your Railway URL will look like `https://your-app-name.up.railway.app`. You'll need this for the Twitch OAuth redirect URI.
 
 #### Environment Variables
 
@@ -109,9 +114,26 @@ Railway automatically provides `DATABASE_URL` when you add PostgreSQL.
 | `TWITCH_CLIENT_SECRET` | For Twitch login | From Twitch Developer Console |
 | `TWITCH_REDIRECT_URI` | For Twitch login | `https://your-app.railway.app/auth/twitch/callback` |
 
-**🎮 Twitch Login Setup:**
-- Follow the [Twitch OAuth Setup](#-twitch-oauth-setup) section below
-- Add `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET`, and `TWITCH_REDIRECT_URI`
+#### 🎮 Setting Up Twitch Login for Railway
+
+1. **Get your Railway URL first** — Deploy the app (steps above) and copy your URL from Settings
+2. **Create a Twitch App:**
+   - Go to [Twitch Developer Console](https://dev.twitch.tv/console) → "Register Your Application"
+   - **Name:** Whatever you want (e.g., "My DordRoller")
+   - **OAuth Redirect URLs:** `https://your-app.railway.app/auth/twitch/callback` (use YOUR Railway URL)
+   - **Category:** Website Integration
+   - **Client Type:** Confidential
+   - Click **Create**
+3. **Get credentials:** Click **Manage** on your app → Copy **Client ID** → Click **New Secret** (save it immediately, you can't see it again!)
+4. **Add to Railway Variables:**
+   - `TWITCH_CLIENT_ID` = your Client ID
+   - `TWITCH_CLIENT_SECRET` = your secret
+   - `TWITCH_REDIRECT_URI` = `https://your-app.railway.app/auth/twitch/callback`
+   - `AUTH_ENABLED` = `true`
+   - `JWT_SECRET` = generate a random string (use the command in the table above)
+5. **Redeploy** — Railway auto-redeploys after variable changes
+
+> 📝 **Without Twitch:** Set `AUTH_ENABLED=false` to skip login entirely (anyone can access).
 
 **Alternatives:** [Render](https://render.com/), [Fly.io](https://fly.io/) — all have free tiers.
 
