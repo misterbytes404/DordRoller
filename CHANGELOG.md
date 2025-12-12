@@ -9,8 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [1.0.0] - 2025-12-12
+
+🚀 **First Production Deployment on Railway**
+
 ### Added
 
+- **Railway Deployment** — First production deployment on Railway platform
+  - PostgreSQL database for persistent storage
+  - Twitch OAuth authentication
+  - Auto-deploy from GitHub main branch
+- **Production URL Handling** — Dynamic base URLs work in both dev and production
+  - Socket.io connections use `window.location.origin`
+  - API calls use relative paths
+  - Vite base paths configured for `/gm/` and `/player/`
+- **Privacy Enhancement** — Removed email collection from Twitch OAuth
+  - No longer requests `user:read:email` scope
+  - Email not stored in database for Twitch users
 - **Room Name Display (Player Client)** — Shows room name and code in a header bar after joining
 - **URL Auto-Join (Player Client)** — Players can join rooms via `?room=CODE` parameter (matches GM client behavior)
 - **Account Page Room Links** — Clicking a room from the account dropdown auto-joins with URL parameter
