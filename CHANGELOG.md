@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Dev Branch & Branch Protection** — Set up development workflow for experimental features
+  - Created `dev` branch for testing experimental features (e.g., custom assets)
+  - Configured GitHub branch protection rules on `main`:
+    - Require pull request before merging
+    - Restrict updates to repository admin only
+    - Block force pushes and deletions
+  - Production (Railway) remains isolated — only deploys from `main`
+
 ---
 
 ## [1.1.0] - 2025-12-13
