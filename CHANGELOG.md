@@ -11,6 +11,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.0] - 2025-12-13
+
+### Added
+
+- **Custom Action Field** — When selecting "Other" from the Action dropdown in the dice roller, a text input appears allowing GMs to enter a custom action label (e.g., "Counterspell Check", "Wild Magic Surge") that displays on the OBS overlay
+- **Dev/Prod Environment Setup** — Improved local development workflow
+  - Vite proxy configuration forwards `/auth`, `/api`, and `/socket.io` requests to backend
+  - Conditional base paths (`/` in dev, `/gm/` or `/player/` in production)
+  - New `pnpm dev` command starts backend and GM client together
+  - New `pnpm dev:all` command starts all three (backend, GM, and Player clients)
+  - Hot module reloading works seamlessly with backend authentication
+
+---
+
 ## [1.0.0] - 2025-12-12
 
 🚀 **First Production Deployment on Railway**
