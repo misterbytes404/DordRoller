@@ -17,6 +17,24 @@ export class DiceRoller {
     // Single Roll Button
     const rollBtn = document.getElementById('roll-btn');
     rollBtn.addEventListener('click', () => this.handleRoll());
+
+    // Action dropdown - show/hide custom action field
+    const rollLabel = document.getElementById('roll-label');
+    rollLabel.addEventListener('change', () => this.handleActionChange());
+  }
+
+  handleActionChange() {
+    const rollLabel = document.getElementById('roll-label');
+    const customActionGroup = document.getElementById('custom-action-group');
+    const customActionInput = document.getElementById('custom-action');
+    
+    if (rollLabel.value === 'Other') {
+      customActionGroup.style.display = 'flex';
+      customActionInput.focus();
+    } else {
+      customActionGroup.style.display = 'none';
+      customActionInput.value = ''; // Clear when switching away
+    }
   }
 
   setRollMode(mode) {
@@ -61,7 +79,9 @@ export class DiceRoller {
     const useAdvDisadv = isAdvDisadv && isD20Roll;
     
     const quantity = useAdvDisadv ? 1 : (Number(document.getElementById('dice-quantity').value) || 1);
-    const label = document.getElementById('roll-label').value || 'GM Roll';
+    const selectedAction = document.getElementById('roll-label').value;
+    const customAction = document.getElementById('custom-action').value.trim();
+    const label = (selectedAction === 'Other' && customAction) ? customAction : (selectedAction || 'GM Roll');
     const roomCode = this.getRoomCode();
     const modifier = Number(document.getElementById('roll-modifier').value) || 0;
 

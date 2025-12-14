@@ -4,9 +4,14 @@
   "description": "A Twitch D&D Stream Management Suite - Roll dice, track monsters, manage characters in real-time",
   "private": true,
   "scripts": {
+    "dev": "concurrently \"pnpm dev:backend\" \"pnpm dev:gm\"",
+    "dev:all": "concurrently \"pnpm dev:backend\" \"pnpm dev:gm\" \"pnpm dev:player\"",
     "dev:backend": "cd backend && pnpm dev",
     "dev:gm": "cd gm-client && pnpm dev",
     "dev:player": "cd player-client && pnpm dev"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
   },
   "repository": {
     "type": "git",
