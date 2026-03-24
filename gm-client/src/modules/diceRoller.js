@@ -5,6 +5,7 @@ export class DiceRoller {
     this.socket = socket;
     this.getRoomCode = getRoomCode;
     this.currentRollMode = 'normal'; // 'normal', 'advantage', 'disadvantage'
+    this.lastRollParams = null; // Stores last roll's parameters for reroll
     this.init();
   }
 
@@ -17,6 +18,12 @@ export class DiceRoller {
     // Single Roll Button
     const rollBtn = document.getElementById('roll-btn');
     rollBtn.addEventListener('click', () => this.handleRoll());
+
+    // Reroll Button
+    const rerollBtn = document.getElementById('reroll-btn');
+    if (rerollBtn) {
+      rerollBtn.addEventListener('click', () => this.handleReroll());
+    }
 
     // Action dropdown - show/hide custom action field
     const rollLabel = document.getElementById('roll-label');
@@ -90,6 +97,34 @@ export class DiceRoller {
       return;
     }
 
+    // Save params for reroll (before rolling, so we capture the configuration)
+    this.lastRollParams = { diceType, quantity, modifier, label, rollMode: rollType };
+    this.enableRerollButton();
+
+    // Execute the roll with these params
+    this.executeRoll(this.lastRollParams);
+  }
+
+  handleReroll() {
+    if (!this.lastRollParams) return;
+
+    const roomCode = this.getRoomCode();
+    if (!roomCode) {
+      alert('Please join a room first!');
+      return;
+    }
+
+    // Re-execute with the stored params (fresh random values)
+    this.executeRoll(this.lastRollParams);
+  }
+
+  executeRoll(params) {
+    const { diceType, quantity, modifier, label, rollMode } = params;
+    const roomCode = this.getRoomCode();
+    const isAdvDisadv = rollMode === 'advantage' || rollMode === 'disadvantage';
+    const isD20Roll = diceType === 'd20';
+    const useAdvDisadv = isAdvDisadv && isD20Roll;
+
     let individualRolls = [];
     let totalRaw = 0;
 
@@ -97,7 +132,7 @@ export class DiceRoller {
       // Roll 2d20 for advantage/disadvantage
       const roll1 = this.rollDice('d20');
       const roll2 = this.rollDice('d20');
-      totalRaw = rollType === 'advantage' ? Math.max(roll1, roll2) : Math.min(roll1, roll2);
+      totalRaw = rollMode === 'advantage' ? Math.max(roll1, roll2) : Math.min(roll1, roll2);
       individualRolls = [roll1, roll2];
     } else {
       // Normal roll (or non-d20 with adv/disadv selected - just roll normally)
@@ -120,8 +155,8 @@ export class DiceRoller {
       modifier,
       rawResult: totalRaw,
       individualRolls,
-      rollType: useAdvDisadv ? rollType : 'normal',
-      rollMode: rollType,
+      rollType: useAdvDisadv ? rollMode : 'normal',
+      rollMode: rollMode,
       timestamp: Date.now()
     };
 
@@ -130,6 +165,13 @@ export class DiceRoller {
 
     // UI Feedback
     this.showFeedback(rollData, useAdvDisadv, diceType, quantity);
+  }
+
+  enableRerollButton() {
+    const rerollBtn = document.getElementById('reroll-btn');
+    if (rerollBtn) {
+      rerollBtn.disabled = false;
+    }
   }
 
   showFeedback(rollData, useAdvDisadv, diceType, quantity) {

@@ -34,6 +34,10 @@ function displayRoll(rollData) {
   const largeResult = document.getElementById('large-result');
   const rollDetails = document.getElementById('roll-details');
 
+  // Cancel any existing hide timer so rapid rerolls get a full display
+  clearTimeout(window.rollHideTimeout);
+  clearTimeout(window.rollFadeTimeout);
+
   // Populate data
   label.textContent = rollData.label;
   largeResult.textContent = rollData.result; // Final Result displayed in large font
@@ -53,17 +57,17 @@ function displayRoll(rollData) {
 
 
   // Show with animation
-  display.classList.remove('hidden');
+  display.classList.remove('hidden', 'hide');
   display.classList.add('show');
 
-  // Auto-hide after 5 seconds
-  setTimeout(() => {
+  // Auto-hide after 8 seconds
+  window.rollHideTimeout = setTimeout(() => {
     display.classList.remove('show');
     display.classList.add('hide');
     
-    setTimeout(() => {
+    window.rollFadeTimeout = setTimeout(() => {
       display.classList.add('hidden');
       display.classList.remove('hide');
     }, 500);
-  }, 5000);
+  }, 8000);
 }

@@ -22,6 +22,13 @@ const TWITCH_REDIRECT_URI = process.env.TWITCH_REDIRECT_URI || 'http://localhost
 
 // Authentication middleware - validates session cookie
 export const authenticateToken = async (req, res, next) => {
+    // DEV BYPASS: Skip auth when AUTH_ENABLED=false (for local testing only)
+    if (process.env.AUTH_ENABLED === 'false') {
+        req.user = { id: 'dev-gm', username: 'dev', displayName: 'Dev GM', avatarUrl: null, twitchId: null };
+        req.sessionToken = 'dev-session';
+        return next();
+    }
+
     try {
         const sessionToken = req.cookies?.[COOKIE_NAME];
         

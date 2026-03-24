@@ -326,6 +326,41 @@ button:hover {
   margin-right: 8px;
 }
 
+/* Reroll Button - Secondary/Outlined style */
+#reroll-btn {
+  background: transparent;
+  color: var(--color-primary);
+  border: 2px solid var(--color-primary);
+  transition: all 0.3s ease;
+}
+
+#reroll-btn:hover:not(:disabled) {
+  background: var(--color-primary);
+  color: var(--bg-dark);
+  box-shadow: var(--glow-primary);
+}
+
+#reroll-btn:hover:not(:disabled) i {
+  animation: reroll-spin 0.4s ease;
+}
+
+#reroll-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  border-color: var(--border-light);
+  color: var(--text-muted);
+}
+
+#reroll-btn:disabled:hover {
+  background: transparent;
+  box-shadow: none;
+}
+
+@keyframes reroll-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 /* Updated for horizontal layout with labels above */
 #dice-roller .dice-fields {
   display: flex;
