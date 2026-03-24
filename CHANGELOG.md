@@ -11,6 +11,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Monster Roll Buttons** — Expandable roll panel on each monster card for quick dice rolls
+  - Toggle button reveals/hides roll panel with smooth animation
+  - **Initiative Roll** — d20 + Dex modifier with editable modifier input
+  - **Ability Checks** — Roll any of the 6 ability checks with auto-calculated modifiers
+  - **Saving Throws** — All 6 saves with proficiency highlighting (gold border for proficient saves)
+  - **Attack Rolls** — Auto-parsed from bestiary actions (e.g., "Scimitar +4 to hit")
+  - **Damage Rolls** — Parsed damage dice from action text (e.g., "1d6 + 2 slashing")
+  - All modifiers are editable in the card before rolling
+  - Rolls broadcast to room (OBS overlay + connected clients)
+  - Responsive layout scales properly with 3+ monsters per row
+
+- **Duplicate Monster Button** — Create copies of existing monster cards
+  - Click duplicate icon to clone any monster
+  - Automatically appends "#2", "#3", etc. to copied monster names
+  - Duplicates start at full HP
+  - Useful for quickly adding multiple of the same creature (e.g., 4 goblins)
+
 - **Dev Branch & Branch Protection** — Set up development workflow for experimental features
   - Created `dev` branch for testing experimental features (e.g., custom assets)
   - Configured GitHub branch protection rules on `main`:
@@ -18,6 +35,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Restrict updates to repository admin only
     - Block force pushes and deletions
   - Production (Railway) remains isolated — only deploys from `main`
+
+### Fixed
+
+- **Monster Card Edit Button** — Edit mode now properly activates when clicking Edit button
+  - Fixed ID type mismatch (hex string IDs no longer incorrectly converted to numbers)
+  - Fixed event listener targeting when clicking button icons
+- **Roll Panel Responsive Layout** — Roll panels now scale properly in narrow cards
+  - Reduced padding and font sizes for compact display
+  - Grid columns auto-fit based on available width
+  - Attack rows wrap correctly on smaller cards
 
 ---
 

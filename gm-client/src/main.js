@@ -419,6 +419,6 @@ socket.on('error', (data) => {
 
 // Initialize modules
 const diceRoller = new DiceRoller(socket, () => currentRoom);
-const monsterTracker = new MonsterTracker();
+const monsterTracker = new MonsterTracker(socket, () => currentRoom);
 const playerTracker = new PlayerTracker(socket);
 const rollLog = new RollLog(socket);

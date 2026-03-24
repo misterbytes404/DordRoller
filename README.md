@@ -43,7 +43,8 @@ DordRoller/
 | Feature | Description |
 |---------|-------------|
 | **Dice Roller** | Roll d4, d6, d8, d10, d12, d20, d100 with custom labels |
-| **Monster Tracker** | Search D&D 5e bestiary, track HP with visual health bars |
+| **Monster Tracker** | Search D&D 5e bestiary, track HP with visual health bars, roll attacks/saves/checks directly from cards |
+| **Monster Roll Buttons** | Expandable panel per monster with initiative, ability checks, saves, attacks & damage — all with editable modifiers |
 | **Room Management** | Generate unique room codes for player sessions |
 | **Live Broadcasting** | Instant sync to OBS overlay and connected players |
 

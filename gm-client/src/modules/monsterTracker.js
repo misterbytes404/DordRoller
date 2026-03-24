@@ -3,13 +3,216 @@
 // Dynamic API base URL - works in both dev and production
 const API_URL = `${window.location.origin}/api`;
 
+// ===== ATTACK PARSING UTILITIES =====
+// Parses 5etools action format to extract structured attack data
+
+/**
+ * Parse a single action entry to extract attack data
+ * @param {Object} action - 5etools action object with name and entries
+ * @returns {Object|null} Parsed attack data or null if not an attack
+ */
+function parseAction(action) {
+  if (!action || !action.entries || !action.entries.length) return null;
+  
+  const entry = action.entries.join(' ');
+  const attack = {
+    name: action.name,
+    type: null,        // 'mw', 'rw', 'ms', 'rs' (melee/ranged weapon/spell)
+    attackBonus: null,
+    damage: [],        // Array of {dice, type}
+    reach: null,
+    range: null,
+    saveDC: null,
+    saveType: null,
+    description: entry
+  };
+
+  // Detect attack type
+  if (/{@atk mw}/.test(entry)) attack.type = 'mw';
+  else if (/{@atk rw}/.test(entry)) attack.type = 'rw';
+  else if (/{@atk ms}/.test(entry)) attack.type = 'ms';
+  else if (/{@atk rs}/.test(entry)) attack.type = 'rs';
+  else if (/{@atk mw,rw}/.test(entry)) attack.type = 'mw/rw';
+
+  // Extract attack bonus: {@hit 9} -> +9
+  const hitMatch = entry.match(/{@hit ([+-]?\d+)}/);
+  if (hitMatch) {
+    attack.attackBonus = parseInt(hitMatch[1], 10);
+  }
+
+  // Extract damage: {@damage 2d6 + 5} or {@damage 1d8}
+  const damageMatches = entry.matchAll(/{@damage ([^}]+)}/g);
+  for (const match of damageMatches) {
+    const damageStr = match[1].trim();
+    // Try to find damage type after the damage dice
+    const afterDamage = entry.slice(entry.indexOf(match[0]) + match[0].length, entry.indexOf(match[0]) + match[0].length + 50);
+    const typeMatch = afterDamage.match(/^\s*\)?\s*(\w+)\s+damage/i);
+    attack.damage.push({
+      dice: damageStr,
+      type: typeMatch ? typeMatch[1].toLowerCase() : 'untyped'
+    });
+  }
+
+  // Extract reach: "reach 10 ft."
+  const reachMatch = entry.match(/reach\s+(\d+)\s*ft/i);
+  if (reachMatch) {
+    attack.reach = parseInt(reachMatch[1], 10);
+  }
+
+  // Extract range: "range 30/120 ft." or "range 60 ft."
+  const rangeMatch = entry.match(/range\s+(\d+)(?:\/(\d+))?\s*ft/i);
+  if (rangeMatch) {
+    attack.range = {
+      normal: parseInt(rangeMatch[1], 10),
+      long: rangeMatch[2] ? parseInt(rangeMatch[2], 10) : null
+    };
+  }
+
+  // Extract save DC: {@dc 14} with save type
+  const dcMatch = entry.match(/{@dc (\d+)}/);
+  if (dcMatch) {
+    attack.saveDC = parseInt(dcMatch[1], 10);
+    // Try to find save type
+    const saveTypeMatch = entry.match(/({@dc \d+})\s*(\w+)\s+saving throw/i);
+    if (saveTypeMatch) {
+      attack.saveType = saveTypeMatch[2].toLowerCase().slice(0, 3); // 'str', 'dex', etc.
+    }
+  }
+
+  // Only return if this looks like an attack (has attack bonus or damage or save)
+  if (attack.attackBonus !== null || attack.damage.length > 0 || attack.saveDC !== null) {
+    return attack;
+  }
+  return null;
+}
+
+/**
+ * Parse all actions from a monster to extract attacks
+ * @param {Array} actions - Array of 5etools action objects
+ * @returns {Array} Array of parsed attack objects
+ */
+function parseActionsToAttacks(actions) {
+  if (!actions || !Array.isArray(actions)) return [];
+  
+  const attacks = [];
+  for (const action of actions) {
+    const parsed = parseAction(action);
+    if (parsed) {
+      attacks.push(parsed);
+    }
+  }
+  return attacks;
+}
+
+/**
+ * Extract save proficiencies from monster data
+ * @param {Object} monster - 5etools monster object
+ * @returns {Object} Map of ability -> bonus string
+ */
+function extractSaveProficiencies(monster) {
+  if (!monster.save) return {};
+  return { ...monster.save };
+}
+
+/**
+ * Parse formatted actions text (from database) to extract attack data
+ * Handles text like: "Scimitar: Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit:5 (1d6 + 2) slashing damage."
+ * @param {string} actionsText - Formatted actions text with newlines between actions
+ * @returns {Array} Array of parsed attack objects
+ */
+function parseFormattedActionsText(actionsText) {
+  if (!actionsText || typeof actionsText !== 'string') return [];
+  
+  const attacks = [];
+  // Split by newlines to get individual actions
+  const actionLines = actionsText.split('\n').filter(line => line.trim());
+  
+  for (const line of actionLines) {
+    // Parse action name (before the colon)
+    const colonIdx = line.indexOf(':');
+    if (colonIdx === -1) continue;
+    
+    const name = line.slice(0, colonIdx).trim();
+    const description = line.slice(colonIdx + 1).trim();
+    
+    const attack = {
+      name: name,
+      type: null,
+      attackBonus: null,
+      damage: [],
+      reach: null,
+      range: null,
+      saveDC: null,
+      saveType: null,
+      description: description
+    };
+    
+    // Detect attack type from formatted text
+    if (/Melee Weapon Attack/i.test(description)) attack.type = 'mw';
+    else if (/Ranged Weapon Attack/i.test(description)) attack.type = 'rw';
+    else if (/Melee Spell Attack/i.test(description)) attack.type = 'ms';
+    else if (/Ranged Spell Attack/i.test(description)) attack.type = 'rs';
+    
+    // Extract attack bonus: "+4 to hit" or "+9 to hit"
+    const hitMatch = description.match(/([+-]\d+)\s+to hit/i);
+    if (hitMatch) {
+      attack.attackBonus = parseInt(hitMatch[1], 10);
+    }
+    
+    // Extract damage: "(1d6 + 2)" or "(2d6+5)" followed by damage type
+    // Pattern matches: (dice expression) followed by damage type word
+    const damageMatches = description.matchAll(/\((\d+d\d+(?:\s*[+-]\s*\d+)?)\)\s*(\w+)\s+damage/gi);
+    for (const match of damageMatches) {
+      attack.damage.push({
+        dice: match[1].replace(/\s/g, ''), // Remove spaces: "1d6 + 2" -> "1d6+2"
+        type: match[2].toLowerCase()
+      });
+    }
+    
+    // Extract reach: "reach 5 ft." or "reach 10 ft."
+    const reachMatch = description.match(/reach\s+(\d+)\s*ft/i);
+    if (reachMatch) {
+      attack.reach = parseInt(reachMatch[1], 10);
+    }
+    
+    // Extract range: "range 80/320 ft." or "range 60 ft."
+    const rangeMatch = description.match(/range\s+(\d+)(?:\/(\d+))?\s*ft/i);
+    if (rangeMatch) {
+      attack.range = {
+        normal: parseInt(rangeMatch[1], 10),
+        long: rangeMatch[2] ? parseInt(rangeMatch[2], 10) : null
+      };
+    }
+    
+    // Extract save DC: "DC 14" with optional save type
+    const dcMatch = description.match(/DC\s+(\d+)/i);
+    if (dcMatch) {
+      attack.saveDC = parseInt(dcMatch[1], 10);
+      const saveTypeMatch = description.match(/DC\s+\d+\s+(\w+)\s+saving throw/i);
+      if (saveTypeMatch) {
+        attack.saveType = saveTypeMatch[1].toLowerCase().slice(0, 3);
+      }
+    }
+    
+    // Only add if this looks like an attack
+    if (attack.attackBonus !== null || attack.damage.length > 0 || attack.saveDC !== null) {
+      attacks.push(attack);
+    }
+  }
+  
+  return attacks;
+}
+
 export class MonsterTracker {
-  constructor() {
+  constructor(socket = null, getRoomCode = null) {
     this.monsters = [];  // In-memory cache
     this.roomId = null;  // Database room ID for persistence
     this.editingId = null;  // Track which monster is being edited
     this.bestiary = new Map();  // Map of name -> bestiary monster data
     this.debounceTimer = null;  // For debouncing search input
+    this.socket = socket;  // Socket.io connection for roll broadcasting
+    this.getRoomCode = getRoomCode;  // Function to get current room code
+    this.expandedPanels = new Set();  // Track which monster roll panels are expanded
     this.init();
   }
 
@@ -280,6 +483,10 @@ export class MonsterTracker {
     
     const hp = monster.hp ? monster.hp.average : 1;
     
+    // Parse attacks and save proficiencies from bestiary data
+    const attacks = parseActionsToAttacks(monster.action);
+    const saveProficiencies = extractSaveProficiencies(monster);
+    
     const monsterData = {
       name: monster.name,
       source: monster.source,
@@ -303,6 +510,8 @@ export class MonsterTracker {
       cr: this.formatCR(monster.cr),
       actions: this.formatActions(monster.action),
       reactions: this.formatActions(monster.reaction),
+      attacks: attacks,                    // Parsed attack data for roll buttons
+      saveProficiencies: saveProficiencies, // Save bonuses from bestiary
       displayOrder: this.monsters.length
     };
     
@@ -449,6 +658,8 @@ export class MonsterTracker {
       cr,
       actions,
       reactions,
+      attacks: [],           // Manual entry doesn't have parsed attacks
+      saveProficiencies: {}, // Manual entry doesn't have save proficiencies
       displayOrder: this.monsters.length
     };
     
@@ -516,17 +727,23 @@ export class MonsterTracker {
         // Display mode: Specified format (escape all monster data)
         const modDex = this.getModifier(monster.abilities.dex);  // For Initiative
         const modStr = this.getModifier(monster.abilities.str);
-        const saveStr = this.getSave(monster.abilities.str);
+        const saveStr = this.getSave(monster.abilities.str, monster.saveProficiencies?.str);
         const modDexAttr = this.getModifier(monster.abilities.dex);
-        const saveDex = this.getSave(monster.abilities.dex);
+        const saveDex = this.getSave(monster.abilities.dex, monster.saveProficiencies?.dex);
         const modCon = this.getModifier(monster.abilities.con);
-        const saveCon = this.getSave(monster.abilities.con);
+        const saveCon = this.getSave(monster.abilities.con, monster.saveProficiencies?.con);
         const modInt = this.getModifier(monster.abilities.int);
-        const saveInt = this.getSave(monster.abilities.int);
+        const saveInt = this.getSave(monster.abilities.int, monster.saveProficiencies?.int);
         const modWis = this.getModifier(monster.abilities.wis);
-        const saveWis = this.getSave(monster.abilities.wis);
+        const saveWis = this.getSave(monster.abilities.wis, monster.saveProficiencies?.wis);
         const modCha = this.getModifier(monster.abilities.cha);
-        const saveCha = this.getSave(monster.abilities.cha);
+        const saveCha = this.getSave(monster.abilities.cha, monster.saveProficiencies?.cha);
+
+        // Check if roll panel is expanded
+        const isExpanded = this.expandedPanels.has(monster.id);
+        
+        // Build attack buttons HTML
+        const attackButtonsHtml = this.buildAttackButtonsHtml(monster);
 
         card.innerHTML = `
           <p><strong>Name:</strong> ${this.escapeHtml(monster.name)}</p>
@@ -556,10 +773,142 @@ export class MonsterTracker {
           <p><strong>Languages:</strong> ${this.escapeHtml(monster.languages || 'None')}</p>
           <p><strong>CR:</strong> ${this.escapeHtml(monster.cr || 'N/A')}</p>
           <hr>
+          
+          <!-- Roll Panel -->
+          <div class="roll-panel-container">
+            <button class="roll-panel-toggle" data-id="${monster.id}">
+              <i class="fa-solid fa-dice-d20"></i> Rolls
+              <i class="fa-solid fa-chevron-${isExpanded ? 'up' : 'down'} toggle-icon"></i>
+            </button>
+            <div class="roll-panel ${isExpanded ? 'expanded' : ''}" id="roll-panel-${monster.id}">
+              <!-- Initiative -->
+              <div class="roll-section">
+                <label>Initiative:</label>
+                <div class="roll-row">
+                  <input type="number" class="roll-modifier" id="init-mod-${monster.id}" value="${this.getModifierValue(monster.abilities.dex)}" title="Initiative modifier">
+                  <button class="roll-btn initiative-roll" data-id="${monster.id}" data-type="initiative" title="Roll Initiative">
+                    <i class="fa-solid fa-dice-d20"></i> Roll
+                  </button>
+                </div>
+              </div>
+              
+              <!-- Ability Checks -->
+              <div class="roll-section">
+                <label>Ability Checks:</label>
+                <div class="roll-grid ability-grid">
+                  <div class="roll-row">
+                    <span class="ability-label">STR</span>
+                    <input type="number" class="roll-modifier" id="str-check-mod-${monster.id}" value="${this.getModifierValue(monster.abilities.str)}">
+                    <button class="roll-btn ability-roll" data-id="${monster.id}" data-ability="str" title="Roll STR Check">
+                      <i class="fa-solid fa-dice-d20"></i>
+                    </button>
+                  </div>
+                  <div class="roll-row">
+                    <span class="ability-label">DEX</span>
+                    <input type="number" class="roll-modifier" id="dex-check-mod-${monster.id}" value="${this.getModifierValue(monster.abilities.dex)}">
+                    <button class="roll-btn ability-roll" data-id="${monster.id}" data-ability="dex" title="Roll DEX Check">
+                      <i class="fa-solid fa-dice-d20"></i>
+                    </button>
+                  </div>
+                  <div class="roll-row">
+                    <span class="ability-label">CON</span>
+                    <input type="number" class="roll-modifier" id="con-check-mod-${monster.id}" value="${this.getModifierValue(monster.abilities.con)}">
+                    <button class="roll-btn ability-roll" data-id="${monster.id}" data-ability="con" title="Roll CON Check">
+                      <i class="fa-solid fa-dice-d20"></i>
+                    </button>
+                  </div>
+                  <div class="roll-row">
+                    <span class="ability-label">INT</span>
+                    <input type="number" class="roll-modifier" id="int-check-mod-${monster.id}" value="${this.getModifierValue(monster.abilities.int)}">
+                    <button class="roll-btn ability-roll" data-id="${monster.id}" data-ability="int" title="Roll INT Check">
+                      <i class="fa-solid fa-dice-d20"></i>
+                    </button>
+                  </div>
+                  <div class="roll-row">
+                    <span class="ability-label">WIS</span>
+                    <input type="number" class="roll-modifier" id="wis-check-mod-${monster.id}" value="${this.getModifierValue(monster.abilities.wis)}">
+                    <button class="roll-btn ability-roll" data-id="${monster.id}" data-ability="wis" title="Roll WIS Check">
+                      <i class="fa-solid fa-dice-d20"></i>
+                    </button>
+                  </div>
+                  <div class="roll-row">
+                    <span class="ability-label">CHA</span>
+                    <input type="number" class="roll-modifier" id="cha-check-mod-${monster.id}" value="${this.getModifierValue(monster.abilities.cha)}">
+                    <button class="roll-btn ability-roll" data-id="${monster.id}" data-ability="cha" title="Roll CHA Check">
+                      <i class="fa-solid fa-dice-d20"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Saving Throws -->
+              <div class="roll-section">
+                <label>Saving Throws:</label>
+                <div class="roll-grid save-grid">
+                  <div class="roll-row ${monster.saveProficiencies?.str ? 'proficient' : ''}">
+                    <span class="ability-label">STR</span>
+                    <input type="number" class="roll-modifier" id="str-save-mod-${monster.id}" value="${this.getSaveValue(monster.abilities.str, monster.saveProficiencies?.str)}">
+                    <button class="roll-btn save-roll" data-id="${monster.id}" data-save="str" title="Roll STR Save">
+                      <i class="fa-solid fa-dice-d20"></i>
+                    </button>
+                  </div>
+                  <div class="roll-row ${monster.saveProficiencies?.dex ? 'proficient' : ''}">
+                    <span class="ability-label">DEX</span>
+                    <input type="number" class="roll-modifier" id="dex-save-mod-${monster.id}" value="${this.getSaveValue(monster.abilities.dex, monster.saveProficiencies?.dex)}">
+                    <button class="roll-btn save-roll" data-id="${monster.id}" data-save="dex" title="Roll DEX Save">
+                      <i class="fa-solid fa-dice-d20"></i>
+                    </button>
+                  </div>
+                  <div class="roll-row ${monster.saveProficiencies?.con ? 'proficient' : ''}">
+                    <span class="ability-label">CON</span>
+                    <input type="number" class="roll-modifier" id="con-save-mod-${monster.id}" value="${this.getSaveValue(monster.abilities.con, monster.saveProficiencies?.con)}">
+                    <button class="roll-btn save-roll" data-id="${monster.id}" data-save="con" title="Roll CON Save">
+                      <i class="fa-solid fa-dice-d20"></i>
+                    </button>
+                  </div>
+                  <div class="roll-row ${monster.saveProficiencies?.int ? 'proficient' : ''}">
+                    <span class="ability-label">INT</span>
+                    <input type="number" class="roll-modifier" id="int-save-mod-${monster.id}" value="${this.getSaveValue(monster.abilities.int, monster.saveProficiencies?.int)}">
+                    <button class="roll-btn save-roll" data-id="${monster.id}" data-save="int" title="Roll INT Save">
+                      <i class="fa-solid fa-dice-d20"></i>
+                    </button>
+                  </div>
+                  <div class="roll-row ${monster.saveProficiencies?.wis ? 'proficient' : ''}">
+                    <span class="ability-label">WIS</span>
+                    <input type="number" class="roll-modifier" id="wis-save-mod-${monster.id}" value="${this.getSaveValue(monster.abilities.wis, monster.saveProficiencies?.wis)}">
+                    <button class="roll-btn save-roll" data-id="${monster.id}" data-save="wis" title="Roll WIS Save">
+                      <i class="fa-solid fa-dice-d20"></i>
+                    </button>
+                  </div>
+                  <div class="roll-row ${monster.saveProficiencies?.cha ? 'proficient' : ''}">
+                    <span class="ability-label">CHA</span>
+                    <input type="number" class="roll-modifier" id="cha-save-mod-${monster.id}" value="${this.getSaveValue(monster.abilities.cha, monster.saveProficiencies?.cha)}">
+                    <button class="roll-btn save-roll" data-id="${monster.id}" data-save="cha" title="Roll CHA Save">
+                      <i class="fa-solid fa-dice-d20"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Attacks -->
+              ${attackButtonsHtml}
+            </div>
+          </div>
+          
+          <hr>
           <p><strong>Actions:</strong><br>${this.escapeHtmlWithBreaks(monster.actions)}</p>
           <p><strong>Reactions:</strong><br>${this.escapeHtmlWithBreaks(monster.reactions)}</p>
-          <button class="edit-btn" data-id="${monster.id}">Edit</button>
-          <button class="delete-btn" data-id="${monster.id}">Delete</button>
+          <div class="monster-card-actions">
+            <button class="duplicate-btn" data-id="${monster.id}" title="Create a copy of this monster">
+              <i class="fa-solid fa-clone"></i> Duplicate
+            </button>
+            <button class="edit-btn" data-id="${monster.id}">
+              <i class="fa-solid fa-pen"></i> Edit
+            </button>
+            <button class="delete-btn" data-id="${monster.id}">
+              <i class="fa-solid fa-trash"></i> Delete
+            </button>
+          </div>
         `;
       }
       list.appendChild(card);
@@ -588,16 +937,97 @@ export class MonsterTracker {
 
     // Add event listeners (same as before)
     document.querySelectorAll('.edit-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => this.startEdit(e.target.dataset.id));
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const id = e.target.closest('.edit-btn').dataset.id;
+        this.startEdit(id);
+      });
     });
     document.querySelectorAll('.save-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => this.saveEdit(e.target.dataset.id));
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const id = e.target.closest('.save-btn').dataset.id;
+        this.saveEdit(id);
+      });
     });
     document.querySelectorAll('.cancel-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => this.cancelEdit());
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.cancelEdit();
+      });
     });
     document.querySelectorAll('.delete-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => this.deleteMonster(e.target.dataset.id));
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const id = e.target.closest('.delete-btn').dataset.id;
+        this.deleteMonster(id);
+      });
+    });
+    
+    // Duplicate button event listeners
+    document.querySelectorAll('.duplicate-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const id = e.target.closest('.duplicate-btn').dataset.id;
+        this.duplicateMonster(id);
+      });
+    });
+    
+    // Roll panel event listeners
+    document.querySelectorAll('.roll-panel-toggle').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const id = btn.dataset.id;
+        this.toggleRollPanel(id);
+      });
+    });
+    
+    // Initiative roll buttons
+    document.querySelectorAll('.initiative-roll').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const id = btn.dataset.id;
+        const modifier = parseInt(document.getElementById(`init-mod-${id}`).value) || 0;
+        this.rollInitiative(id, modifier);
+      });
+    });
+    
+    // Ability check buttons
+    document.querySelectorAll('.ability-roll').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const id = btn.dataset.id;
+        const ability = btn.dataset.ability;
+        const modifier = parseInt(document.getElementById(`${ability}-check-mod-${id}`).value) || 0;
+        this.rollAbilityCheck(id, ability, modifier);
+      });
+    });
+    
+    // Saving throw buttons
+    document.querySelectorAll('.save-roll').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const id = btn.dataset.id;
+        const save = btn.dataset.save;
+        const modifier = parseInt(document.getElementById(`${save}-save-mod-${id}`).value) || 0;
+        this.rollSavingThrow(id, save, modifier);
+      });
+    });
+    
+    // Attack roll buttons
+    document.querySelectorAll('.attack-roll').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const id = btn.dataset.id;
+        const attackIdx = parseInt(btn.dataset.attackIdx);
+        const modifier = parseInt(document.getElementById(`attack-mod-${id}-${attackIdx}`).value) || 0;
+        this.rollAttack(id, attackIdx, modifier);
+      });
+    });
+    
+    // Damage roll buttons
+    document.querySelectorAll('.damage-roll').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const id = btn.dataset.id;
+        const attackIdx = parseInt(btn.dataset.attackIdx);
+        const damageIdx = parseInt(btn.dataset.damageIdx);
+        this.rollDamage(id, attackIdx, damageIdx);
+      });
     });
   }
 
@@ -606,13 +1036,294 @@ export class MonsterTracker {
     return mod >= 0 ? `+${mod}` : mod;
   }
 
-  getSave(score) {
-    // Assuming base save is modifier; adjust if proficiencies are added later
+  // Get raw modifier value (number, not string)
+  getModifierValue(score) {
+    return Math.floor((score - 10) / 2);
+  }
+
+  getSave(score, proficiencyBonus = null) {
+    // If proficiency bonus is provided (from bestiary), use it
+    if (proficiencyBonus !== null && proficiencyBonus !== undefined) {
+      // proficiency bonus from bestiary is like "+6" or "+8"
+      const bonus = typeof proficiencyBonus === 'string' 
+        ? parseInt(proficiencyBonus.replace('+', ''), 10) 
+        : proficiencyBonus;
+      return bonus >= 0 ? `+${bonus}` : bonus;
+    }
+    // Otherwise use base modifier
     return this.getModifier(score);
   }
 
+  // Get raw save value (number) for input fields
+  getSaveValue(score, proficiencyBonus = null) {
+    if (proficiencyBonus !== null && proficiencyBonus !== undefined) {
+      const bonus = typeof proficiencyBonus === 'string' 
+        ? parseInt(proficiencyBonus.replace('+', ''), 10) 
+        : proficiencyBonus;
+      return bonus;
+    }
+    return this.getModifierValue(score);
+  }
+
+  // Toggle roll panel visibility
+  toggleRollPanel(id) {
+    if (this.expandedPanels.has(id)) {
+      this.expandedPanels.delete(id);
+    } else {
+      this.expandedPanels.add(id);
+    }
+    
+    // Toggle the panel visibility without full re-render
+    const panel = document.getElementById(`roll-panel-${id}`);
+    const toggleBtn = document.querySelector(`.roll-panel-toggle[data-id="${id}"]`);
+    if (panel && toggleBtn) {
+      panel.classList.toggle('expanded');
+      const icon = toggleBtn.querySelector('.toggle-icon');
+      if (icon) {
+        icon.classList.toggle('fa-chevron-down');
+        icon.classList.toggle('fa-chevron-up');
+      }
+    }
+  }
+
+  // Build HTML for attack buttons
+  buildAttackButtonsHtml(monster) {
+    // Try to use pre-parsed attacks, otherwise parse from formatted actions text
+    let attacks = monster.attacks;
+    if (!attacks || attacks.length === 0) {
+      // Parse from formatted actions text (for monsters loaded from database)
+      attacks = parseFormattedActionsText(monster.actions);
+      // Cache the parsed attacks on the monster object
+      monster.attacks = attacks;
+    }
+    
+    if (attacks.length === 0) {
+      return '<div class="roll-section"><p class="no-attacks">No parsed attacks available</p></div>';
+    }
+
+    let html = '<div class="roll-section"><label>Attacks:</label><div class="attacks-container">';
+    
+    attacks.forEach((attack, idx) => {
+      const attackTypeIcon = this.getAttackTypeIcon(attack.type);
+      const hasToHit = attack.attackBonus !== null;
+      const hasDamage = attack.damage && attack.damage.length > 0;
+      
+      html += `<div class="attack-row" data-attack-idx="${this.escapeHtml(idx)}">`;
+      html += `<span class="attack-name">${attackTypeIcon} ${this.escapeHtml(attack.name)}</span>`;
+      
+      if (hasToHit) {
+        html += `
+          <div class="attack-to-hit">
+            <input type="number" class="roll-modifier" id="attack-mod-${this.escapeHtml(monster.id)}-${idx}" value="${this.escapeHtml(attack.attackBonus)}" title="Attack bonus">
+            <button class="roll-btn attack-roll" data-id="${this.escapeHtml(monster.id)}" data-attack-idx="${idx}" title="Roll to Hit">
+              <i class="fa-solid fa-dice-d20"></i> Hit
+            </button>
+          </div>`;
+      }
+      
+      if (hasDamage) {
+        html += '<div class="attack-damages">';
+        attack.damage.forEach((dmg, dmgIdx) => {
+          html += `
+            <button class="roll-btn damage-roll" data-id="${this.escapeHtml(monster.id)}" data-attack-idx="${idx}" data-damage-idx="${dmgIdx}" title="Roll ${this.escapeHtml(dmg.dice)} ${this.escapeHtml(dmg.type)} damage">
+              <i class="fa-solid fa-burst"></i> ${this.escapeHtml(dmg.dice)}
+            </button>`;
+        });
+        html += '</div>';
+      }
+      
+      html += '</div>';
+    });
+    
+    html += '</div></div>';
+    return html;
+  }
+
+  // Get icon for attack type
+  getAttackTypeIcon(type) {
+    switch (type) {
+      case 'mw': return '<i class="fa-solid fa-sword" title="Melee Weapon"></i>';
+      case 'rw': return '<i class="fa-solid fa-bow-arrow" title="Ranged Weapon"></i>';
+      case 'ms': return '<i class="fa-solid fa-wand-sparkles" title="Melee Spell"></i>';
+      case 'rs': return '<i class="fa-solid fa-bolt" title="Ranged Spell"></i>';
+      case 'mw/rw': return '<i class="fa-solid fa-hand-fist" title="Melee/Ranged"></i>';
+      default: return '<i class="fa-solid fa-crosshairs"></i>';
+    }
+  }
+
+  // ===== ROLL METHODS =====
+
+  rollDice(sides) {
+    return Math.floor(Math.random() * sides) + 1;
+  }
+
+  // Emit roll data to socket
+  emitRoll(rollData) {
+    if (!this.socket || !this.getRoomCode) {
+      console.warn('Socket not available for roll broadcast');
+      return;
+    }
+    
+    const roomCode = this.getRoomCode();
+    if (!roomCode) {
+      console.warn('No room code - roll not broadcast');
+      return;
+    }
+
+    const fullRollData = {
+      roomCode,
+      ...rollData,
+      timestamp: Date.now()
+    };
+
+    this.socket.emit('gm_roll', fullRollData);
+    console.log('Monster roll sent:', fullRollData);
+  }
+
+  rollInitiative(monsterId, modifier) {
+    const monster = this.monsters.find(m => m.id == monsterId);
+    if (!monster) return;
+
+    const roll = this.rollDice(20);
+    const total = roll + modifier;
+
+    this.emitRoll({
+      roller: monster.name,
+      diceType: 'd20',
+      quantity: 1,
+      result: total,
+      rawResult: roll,
+      individualRolls: [roll],
+      modifier: modifier,
+      label: 'Initiative',
+      rollType: 'normal',
+      rollMode: 'normal'
+    });
+  }
+
+  rollAbilityCheck(monsterId, ability, modifier) {
+    const monster = this.monsters.find(m => m.id == monsterId);
+    if (!monster) return;
+
+    const abilityNames = { str: 'Strength', dex: 'Dexterity', con: 'Constitution', int: 'Intelligence', wis: 'Wisdom', cha: 'Charisma' };
+    const roll = this.rollDice(20);
+    const total = roll + modifier;
+
+    this.emitRoll({
+      roller: monster.name,
+      diceType: 'd20',
+      quantity: 1,
+      result: total,
+      rawResult: roll,
+      individualRolls: [roll],
+      modifier: modifier,
+      label: `${abilityNames[ability]} Check`,
+      rollType: 'normal',
+      rollMode: 'normal'
+    });
+  }
+
+  rollSavingThrow(monsterId, save, modifier) {
+    const monster = this.monsters.find(m => m.id == monsterId);
+    if (!monster) return;
+
+    const saveNames = { str: 'STR', dex: 'DEX', con: 'CON', int: 'INT', wis: 'WIS', cha: 'CHA' };
+    const roll = this.rollDice(20);
+    const total = roll + modifier;
+
+    this.emitRoll({
+      roller: monster.name,
+      diceType: 'd20',
+      quantity: 1,
+      result: total,
+      rawResult: roll,
+      individualRolls: [roll],
+      modifier: modifier,
+      label: `${saveNames[save]} Save`,
+      rollType: 'normal',
+      rollMode: 'normal'
+    });
+  }
+
+  rollAttack(monsterId, attackIdx, modifier) {
+    const monster = this.monsters.find(m => m.id == monsterId);
+    if (!monster || !monster.attacks || !monster.attacks[attackIdx]) return;
+
+    const attack = monster.attacks[attackIdx];
+    const roll = this.rollDice(20);
+    const total = roll + modifier;
+
+    this.emitRoll({
+      roller: monster.name,
+      diceType: 'd20',
+      quantity: 1,
+      result: total,
+      rawResult: roll,
+      individualRolls: [roll],
+      modifier: modifier,
+      label: `${attack.name} Attack`,
+      rollType: 'normal',
+      rollMode: 'normal'
+    });
+  }
+
+  rollDamage(monsterId, attackIdx, damageIdx) {
+    const monster = this.monsters.find(m => m.id == monsterId);
+    if (!monster || !monster.attacks || !monster.attacks[attackIdx]) return;
+
+    const attack = monster.attacks[attackIdx];
+    const damage = attack.damage[damageIdx];
+    if (!damage) return;
+
+    // Parse dice formula: "2d6 + 5" or "1d8" etc.
+    const { rolls, total, formula, modifier } = this.parseDiceFormula(damage.dice);
+
+    this.emitRoll({
+      roller: monster.name,
+      diceType: formula,
+      quantity: rolls.length,
+      result: total,
+      rawResult: total - (modifier || 0),
+      individualRolls: rolls,
+      modifier: modifier || 0,
+      label: `${attack.name} (${damage.type} damage)`,
+      rollType: 'damage',
+      rollMode: 'normal'
+    });
+  }
+
+  // Parse dice formula like "2d6 + 5" or "1d8"
+  parseDiceFormula(formula) {
+    // Match patterns like "2d6", "1d8 + 3", "3d6+5", "1d10 - 1"
+    const match = formula.match(/(\d+)?d(\d+)\s*([+-]\s*\d+)?/i);
+    if (!match) {
+      console.warn('Could not parse dice formula:', formula);
+      return { rolls: [0], total: 0, formula: formula, modifier: 0 };
+    }
+
+    const count = parseInt(match[1] || '1', 10);
+    const sides = parseInt(match[2], 10);
+    const modifierStr = match[3] ? match[3].replace(/\s/g, '') : '0';
+    const modifier = parseInt(modifierStr, 10) || 0;
+
+    const rolls = [];
+    let sum = 0;
+    for (let i = 0; i < count; i++) {
+      const roll = this.rollDice(sides);
+      rolls.push(roll);
+      sum += roll;
+    }
+
+    return {
+      rolls,
+      total: sum + modifier,
+      formula: `${count}d${sides}`,
+      modifier
+    };
+  }
+
   startEdit(id) {
-    this.editingId = Number(id);
+    this.editingId = id; // Keep as string - monster IDs are hex strings
     this.renderMonsters();
   }
 
@@ -674,6 +1385,48 @@ export class MonsterTracker {
     await this.deleteMonsterFromDb(id);
     this.monsters = this.monsters.filter(m => m.id != id);
     this.renderMonsters();
+  }
+
+  async duplicateMonster(id) {
+    // Find the original monster
+    const original = this.monsters.find(m => m.id == id);
+    if (!original) {
+      console.error('Monster not found for duplication:', id);
+      return;
+    }
+
+    // Count existing copies to determine name suffix
+    const baseName = original.name.replace(/\s*#\d+$/, ''); // Remove existing # suffix
+    const existingCopies = this.monsters.filter(m => 
+      m.name === baseName || m.name.match(new RegExp(`^${baseName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*#\\d+$`))
+    ).length;
+
+    // Create a copy without the id (so database creates a new one)
+    const duplicate = {
+      ...original,
+      id: undefined, // New monster gets new ID
+      name: `${baseName} #${existingCopies + 1}`,
+      hp: original.hpMax || original.hp, // Reset HP to max
+      displayOrder: this.monsters.length + 1
+    };
+
+    // Remove the id property entirely
+    delete duplicate.id;
+
+    // Save to database
+    const savedMonster = await this.saveMonsterToDb(duplicate);
+    
+    // Add to list and re-render
+    this.monsters.push(savedMonster);
+    this.renderMonsters();
+
+    // Broadcast update
+    if (this.socket && this.getRoomCode) {
+      this.socket.emit('monsterUpdate', {
+        roomCode: this.getRoomCode(),
+        monsters: this.monsters
+      });
+    }
   }
 
   clearForm() {
