@@ -1,8 +1,9 @@
-// Roll Log Module - Displays player rolls for GM
+// Roll Log Module - Displays all rolls for GM with reroll capability
 
 export class RollLog {
-  constructor(socket) {
+  constructor(socket, getRoomCode) {
     this.socket = socket;
+    this.getRoomCode = getRoomCode || (() => null);
     this.maxEntries = 100; // Cap entries for performance
     this.rolls = [];
     
@@ -23,16 +24,24 @@ export class RollLog {
   }
   
   addRoll(rollData) {
-    // Only show player rolls, not GM rolls
-    if (rollData.isGM) return;
-    
     const entry = {
       playerName: rollData.roller || 'Unknown',
       result: rollData.result,
       label: this.extractLabel(rollData),
       timestamp: rollData.timestamp || Date.now(),
       isCritical: rollData.individualRolls?.includes(20),
-      isFumble: rollData.individualRolls?.includes(1)
+      isFumble: rollData.individualRolls?.includes(1),
+      isGM: !!rollData.isGM,
+      isReroll: !!(rollData.label && rollData.label.startsWith('Reroll: ')),
+      // Store params for reroll
+      rollParams: {
+        diceType: rollData.diceType || 'd20',
+        quantity: rollData.quantity || 1,
+        modifier: rollData.modifier || 0,
+        rollMode: rollData.rollMode || 'normal',
+        label: rollData.label || 'GM Roll',
+        roomCode: rollData.roomCode || null
+      }
     };
     
     this.rolls.push(entry);
@@ -100,9 +109,11 @@ export class RollLog {
     const entryEl = document.createElement('div');
     entryEl.className = 'roll-log-entry';
     
-    // Add special class for crits/fumbles
+    // Add special classes
     if (entry.isCritical) entryEl.classList.add('critical');
     if (entry.isFumble) entryEl.classList.add('fumble');
+    if (entry.isGM) entryEl.classList.add('gm-roll');
+    if (entry.isReroll) entryEl.classList.add('reroll');
     
     // Build entry using safe DOM methods instead of innerHTML
     const timeSpan = document.createElement('span');
@@ -120,11 +131,21 @@ export class RollLog {
     const resultSpan = document.createElement('span');
     resultSpan.className = 'roll-result';
     resultSpan.textContent = entry.result;
+
+    const rerollBtn = document.createElement('button');
+    rerollBtn.className = 'roll-log-reroll-btn';
+    rerollBtn.title = 'Reroll';
+    rerollBtn.type = 'button';
+    const icon = document.createElement('i');
+    icon.className = 'fa-solid fa-dice-d20';
+    rerollBtn.appendChild(icon);
+    rerollBtn.addEventListener('click', () => this.reroll(entry));
     
     entryEl.appendChild(timeSpan);
     entryEl.appendChild(playerSpan);
     entryEl.appendChild(labelSpan);
     entryEl.appendChild(resultSpan);
+    entryEl.appendChild(rerollBtn);
     
     container.appendChild(entryEl);
   }
@@ -136,6 +157,61 @@ export class RollLog {
     }
   }
   
+  reroll(entry) {
+    const roomCode = this.getRoomCode();
+    if (!roomCode) return;
+
+    const { diceType, quantity, modifier, rollMode } = entry.rollParams;
+    // Strip any existing "Reroll: " prefix to avoid stacking
+    const baseLabel = entry.rollParams.label.replace(/^Reroll: /, '');
+    const label = `Reroll: ${baseLabel}`;
+
+    const isAdvDisadv = rollMode === 'advantage' || rollMode === 'disadvantage';
+    const isD20Roll = diceType === 'd20';
+    const useAdvDisadv = isAdvDisadv && isD20Roll;
+
+    let individualRolls = [];
+    let totalRaw = 0;
+
+    if (useAdvDisadv) {
+      const roll1 = this.rollDice('d20');
+      const roll2 = this.rollDice('d20');
+      totalRaw = rollMode === 'advantage' ? Math.max(roll1, roll2) : Math.min(roll1, roll2);
+      individualRolls = [roll1, roll2];
+    } else {
+      for (let i = 0; i < quantity; i++) {
+        const roll = this.rollDice(diceType);
+        individualRolls.push(roll);
+        totalRaw += roll;
+      }
+    }
+
+    const finalResult = totalRaw + modifier;
+
+    const rollData = {
+      roomCode,
+      roller: 'GM',
+      diceType: useAdvDisadv ? 'd20' : diceType,
+      quantity: useAdvDisadv ? 2 : quantity,
+      result: finalResult,
+      label,
+      modifier,
+      rawResult: totalRaw,
+      individualRolls,
+      rollType: useAdvDisadv ? rollMode : 'normal',
+      rollMode,
+      timestamp: Date.now(),
+      isGM: true
+    };
+
+    this.socket.emit('gm_roll', rollData);
+  }
+
+  rollDice(diceType) {
+    const sides = parseInt(diceType.replace('d', ''), 10);
+    return Math.floor(Math.random() * sides) + 1;
+  }
+
   clearLog() {
     this.rolls = [];
     const container = document.getElementById('roll-log-entries');

@@ -425,5 +425,5 @@ socket.on('error', (data) => {
 const diceRoller = new DiceRoller(socket, () => currentRoom);
 const monsterTracker = new MonsterTracker(socket, () => currentRoom);
 const playerTracker = new PlayerTracker(socket);
-const rollLog = new RollLog(socket);
+const rollLog = new RollLog(socket, () => currentRoom);
 const overlaySettings = new OverlaySettings(socket, () => currentRoom, () => monsterTracker.monsters);

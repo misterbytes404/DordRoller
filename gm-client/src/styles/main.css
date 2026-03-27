@@ -107,7 +107,9 @@ h2 {
 
 .dice-roll-row #roll-log .roll-log-entries {
   flex: 1;
-  min-height: 200px;
+  min-height: 0;
+  max-height: 450px;
+  overflow-y: auto;
 }
 
 @media (max-width: 900px) {
@@ -495,6 +497,36 @@ button:hover {
   text-align: center;
   padding: 20px;
   font-style: italic;
+}
+
+.roll-log-entry.gm-roll {
+  background: rgba(100, 80, 200, 0.1);
+}
+
+.roll-log-entry.gm-roll .roll-player {
+  color: #a78bfa;
+}
+
+.roll-log-entry.reroll {
+  border-left: 2px solid #a78bfa;
+}
+
+.roll-log-reroll-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0 4px;
+  font-size: 12px;
+  margin-left: auto;
+  flex-shrink: 0;
+  opacity: 0.4;
+  transition: opacity 0.15s, color 0.15s;
+}
+
+.roll-log-reroll-btn:hover {
+  opacity: 1;
+  color: var(--color-primary);
 }
 
 /* Monster Tracker Styles */
