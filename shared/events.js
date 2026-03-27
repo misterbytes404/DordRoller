@@ -29,7 +29,8 @@ export const SOCKET_EVENTS = {
   BROADCAST_ENTITY_LIST: 'broadcast_entity_list',
   OVERLAY_SETTINGS_UPDATE: 'overlay_settings_update',
   REQUEST_ENTITY_LIST: 'request_entity_list',
-  MONSTER_LIST_UPDATE: 'monster_list_update'
+  MONSTER_LIST_UPDATE: 'monster_list_update',
+  SYNC_ENTITY_LIST: 'sync_entity_list'
 };
 
 // Data structure templates

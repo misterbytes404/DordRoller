@@ -62,8 +62,22 @@ Full **D&D 5e character sheet** with automatic calculations:
 
 ### 📺 OBS Client
 
-- **Stream-Ready Overlay** — Drop into OBS as a browser source
+- **Stream-Ready Overlay** — Drop into OBS as a browser source (designed for **1920×1080** resolution)
 - **Real-Time Updates** — Dice rolls and game state broadcast instantly
+- **Health Bar Overlay** — Persona-inspired JRPG health bars for party and enemies
+  - Grouped display: Party (top-left) and Enemies (top-right) with configurable positions
+  - Smooth animations: sliding fills, ghost bar trail on damage, heal effects
+  - Death state: greyed-out bars for downed entities
+  - Max 10 bars per group (players and monsters independently)
+  - Player tags: shows "Player: {Name}" under each player's bar with auth service icon (Twitch, etc.)
+- **GM Overlay Controls** — Full customization from the GM settings panel
+  - Toggle overlay, names, and HP numbers on/off
+  - Independent bar font/size, header font/size, and player tag font/size
+  - Color pickers: primary bar, low HP, ghost bar, header text, monster names, player names, player tag
+  - Visual position picker for each group (4 corners)
+  - Per-entity visibility toggles
+  - Manual sync button to refresh overlay state
+  - All settings persist to database
 
 ---
 

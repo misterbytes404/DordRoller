@@ -213,6 +213,13 @@ export async function initializeDatabase() {
       CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
       CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
     `);
+
+    // Add overlay_settings column to existing rooms table (safe for production)
+    await client.query(`
+      ALTER TABLE rooms
+        ADD COLUMN IF NOT EXISTS overlay_settings JSONB DEFAULT '{}'::jsonb;
+    `);
+
     console.log('✅ Database schema initialized (Twitch SSO, room membership, sessions)');
   } catch (err) {
     console.error('❌ Failed to initialize database schema:', err.message);

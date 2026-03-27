@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dord Roller - GM Control Panel</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Cinzel:wght@400;700&family=Oswald:wght@400;600&family=Press+Start+2P&family=Rajdhani:wght@400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/src/styles/main.css">
 </head>
 <body>
@@ -16,6 +19,21 @@
         <div id="user-area"></div>
       </div>
     </header>
+
+    <!-- GM Toolbar -->
+    <nav id="gm-toolbar" class="gm-toolbar">
+      <div class="toolbar-item" id="overlay-settings-toolbar-item">
+        <button class="toolbar-btn" id="overlay-settings-btn">
+          <i class="fa-solid fa-sliders"></i> Overlay Settings
+          <i class="fa-solid fa-chevron-down toolbar-chevron"></i>
+        </button>
+        <div class="toolbar-dropdown" id="overlay-settings-dropdown">
+          <div class="toolbar-dropdown-content" id="overlay-settings-panel">
+            <!-- Populated by overlaySettings.js -->
+          </div>
+        </div>
+      </div>
+    </nav>
 
     <main>
       <section id="room-section">

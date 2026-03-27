@@ -98,15 +98,20 @@ async function initAuth() {
       console.log('initAuth: Set and locked player name to:', currentUser.displayName);
     }
     
-    // Also set the character sheet player name (locked)
+    // Pre-fill character sheet player name (editable — user can override)
     const charPlayerName = document.getElementById('char-player-name');
-    if (charPlayerName) {
+    if (charPlayerName && !charPlayerName.value) {
       charPlayerName.value = currentUser.displayName;
-      charPlayerName.readOnly = true;
     }
     
     // Show user profile link
     showUserProfileLink();
+
+    // Display player identity in header
+    const identityEl = document.getElementById('player-identity');
+    if (identityEl) {
+      identityEl.textContent = `Player: ${currentUser.displayName}`;
+    }
   } else {
     // Not logged in - redirect to landing page
     window.location.href = `${BASE_URL}/landing`;
@@ -380,7 +385,9 @@ function joinRoomByCode(roomCode) {
     socket.emit('player_join_room', { 
       roomCode, 
       playerName: name,
-      playerId: currentUser?.id || null
+      playerId: currentUser?.id || null,
+      characterSheetId: currentSheetId || null,
+      authProvider: currentUser?.twitchId ? 'twitch' : null
     });
   } else {
     console.warn('Cannot auto-join: missing room code or player name');
@@ -800,7 +807,9 @@ document.getElementById('join-btn').addEventListener('click', () => {
     socket.emit('player_join_room', { 
       roomCode, 
       playerName: name,
-      playerId: currentUser?.id || null
+      playerId: currentUser?.id || null,
+      characterSheetId: currentSheetId || null,
+      authProvider: currentUser?.twitchId ? 'twitch' : null
     });
   } else {
     alert('Please enter both room code and your name!');
@@ -2174,6 +2183,7 @@ document.querySelectorAll('.death-save-checkbox').forEach(checkbox => {
 function collectSummaryData() {
   return {
     characterName: document.getElementById('char-name')?.value || 'Unknown',
+    playerName: document.getElementById('char-player-name')?.value || '',
     ac: document.getElementById('char-ac')?.value || '—',
     currentHp: document.getElementById('char-hp')?.value || '—',
     maxHp: document.getElementById('char-max-hp')?.value || '—',

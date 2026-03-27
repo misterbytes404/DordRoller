@@ -77,6 +77,19 @@ header {
   border: 1px solid var(--border-color);
 }
 
+.header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.player-identity {
+  font-size: 0.75rem;
+  color: var(--text-muted, #888);
+  padding-left: 2px;
+  letter-spacing: 0.5px;
+}
+
 h1 {
   color: var(--color-primary);
   font-size: 1.5rem;

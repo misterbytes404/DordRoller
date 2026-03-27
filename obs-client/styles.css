@@ -28,6 +28,7 @@ body {
   left: 50%;
   transform: translate(-50%, -50%) scale(0);
   transition: transform 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  z-index: 200;
 }
 
 #roll-display.show {
@@ -183,4 +184,185 @@ body {
   text-shadow: 
     2px 2px 4px rgba(0, 0, 0, 0.8),
     0 0 10px var(--color-primary-glow);
+}
+
+/* =====================================================
+   HEALTH BAR OVERLAY — Persona-style JRPG bars
+   ===================================================== */
+
+#health-bar-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 100;
+  display: none;
+  --hb-font-size: 16px;
+}
+
+#health-bar-overlay.visible {
+  display: block;
+}
+
+/* --- Group Positioning --- */
+.health-group {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 320px;
+  transition: opacity 0.3s ease;
+}
+
+.health-group:not(.has-entities) {
+  display: none;
+}
+
+.health-group.pos-top-left      { top: 20px; left: 20px; }
+.health-group.pos-top-right     { top: 20px; right: 20px; align-items: flex-end; }
+.health-group.pos-bottom-left   { bottom: 20px; left: 20px; }
+.health-group.pos-bottom-right  { bottom: 20px; right: 20px; align-items: flex-end; }
+
+/* --- Group Label --- */
+.group-label {
+  font-size: var(--hb-header-font-size, 18px);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  color: var(--hb-header-color, #f0a500);
+  text-shadow:
+    0 0 10px var(--hb-header-color, #f0a500),
+    0 1px 4px rgba(0, 0, 0, 0.9);
+  padding: 0 8px 4px;
+  transform: skewX(-5deg);
+}
+
+/* --- Health Bar Entity --- */
+.health-bar-entity {
+  width: 280px;
+  transform: skewX(-5deg);
+  opacity: 0;
+  transition: opacity 0.3s ease, transform 0.3s ease, filter 0.5s ease;
+  transform-origin: left center;
+}
+
+.health-bar-entity.entered {
+  opacity: 1;
+}
+
+.health-bar-entity.removing {
+  opacity: 0;
+  transform: skewX(-5deg) translateX(-20px);
+}
+
+/* --- Name Label --- */
+.health-bar-name {
+  font-size: calc(var(--hb-font-size) * 0.75);
+  font-weight: 700;
+  color: inherit;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+  padding: 0 8px 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transform: skewX(5deg);
+}
+
+/* --- Player Tag (Twitch name under bar) --- */
+.health-bar-player-tag {
+  font-size: var(--hb-player-tag-font-size, 12px);
+  color: var(--hb-player-tag-color, rgba(255, 255, 255, 0.55));
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+  padding: 0 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transform: skewX(5deg);
+  display: none;
+}
+
+.player-tag-icon {
+  margin-right: 4px;
+  opacity: 0.8;
+}
+
+/* --- Bar Track --- */
+.health-bar-track {
+  position: relative;
+  height: 18px;
+  background: rgba(0, 0, 0, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+/* --- Ghost Bar (damage trail) --- */
+.health-bar-ghost {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  opacity: 0.5;
+  transition: width 0.8s ease-out;
+}
+
+/* --- Fill Bar (actual HP) --- */
+.health-bar-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  transition: width 0.3s ease, background 0.5s ease;
+}
+
+/* --- HP Numbers --- */
+.health-bar-numbers {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(var(--hb-font-size) * 0.65);
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95);
+  transform: skewX(5deg);
+}
+
+/* --- Death State --- */
+.health-bar-entity.dead {
+  filter: grayscale(1) brightness(0.5);
+}
+
+.health-bar-entity.dead .health-bar-fill {
+  background: #444 !important;
+  box-shadow: none !important;
+}
+
+.health-bar-entity.dead .health-bar-ghost {
+  opacity: 0.2;
+}
+
+/* --- HP Change Pulse --- */
+.health-bar-entity.hp-changed .health-bar-track {
+  animation: hpPulse 0.6s ease-out;
+}
+
+@keyframes hpPulse {
+  0%   { box-shadow: 0 0 14px rgba(255, 255, 255, 0.4); }
+  100% { box-shadow: none; }
+}
+
+/* --- Bar Entrance --- */
+@keyframes barSlideIn {
+  from {
+    opacity: 0;
+    transform: skewX(-5deg) translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: skewX(-5deg) translateX(0);
+  }
+}
+
+.health-bar-entity.entered {
+  animation: barSlideIn 0.35s ease-out forwards;
 }

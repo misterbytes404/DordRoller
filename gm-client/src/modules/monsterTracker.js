@@ -519,6 +519,15 @@ export class MonsterTracker {
     const savedMonster = await this.saveMonsterToDb(monsterData);
     this.monsters.push(savedMonster);
     this.renderMonsters();
+
+    // Notify OBS overlay that a monster was added
+    if (this.socket && this.getRoomCode) {
+      this.socket.emit('monster_list_changed', {
+        roomCode: this.getRoomCode(),
+        action: 'add',
+        monster: { id: savedMonster.id, name: savedMonster.name, hp: savedMonster.hp, hpMax: savedMonster.hpMax }
+      });
+    }
     
     // Keep search open for adding more monsters
     console.log(`Quick added: ${monster.name}`);
@@ -667,6 +676,16 @@ export class MonsterTracker {
     const savedMonster = await this.saveMonsterToDb(monsterData);
     this.monsters.push(savedMonster);
     this.renderMonsters();
+
+    // Notify OBS overlay that a monster was added
+    if (this.socket && this.getRoomCode) {
+      this.socket.emit('monster_list_changed', {
+        roomCode: this.getRoomCode(),
+        action: 'add',
+        monster: { id: savedMonster.id, name: savedMonster.name, hp: savedMonster.hp, hpMax: savedMonster.hpMax }
+      });
+    }
+
     this.clearForm();
   }
 
@@ -920,6 +939,8 @@ export class MonsterTracker {
         
         // Debounce timer for HP saves
         let hpSaveTimer = null;
+        // Separate debounce timer for socket emit (faster than DB save)
+        let hpSocketTimer = null;
         
         slider.addEventListener('input', () => {
           monster.hp = Math.max(0, Math.min(monster.hpMax, Number(slider.value)));
@@ -931,6 +952,19 @@ export class MonsterTracker {
           hpSaveTimer = setTimeout(() => {
             this.saveHpToDb(monster.id, monster.hp);
           }, 500);
+
+          // Debounce socket emit for OBS overlay (100ms - faster for smooth visuals)
+          clearTimeout(hpSocketTimer);
+          hpSocketTimer = setTimeout(() => {
+            if (this.socket && this.getRoomCode) {
+              this.socket.emit('monster_hp_update', {
+                roomCode: this.getRoomCode(),
+                monsterId: monster.id,
+                hp: monster.hp,
+                hpMax: monster.hpMax
+              });
+            }
+          }, 100);
         });
       }
     });
@@ -1385,6 +1419,15 @@ export class MonsterTracker {
     await this.deleteMonsterFromDb(id);
     this.monsters = this.monsters.filter(m => m.id != id);
     this.renderMonsters();
+
+    // Notify OBS overlay that a monster was removed
+    if (this.socket && this.getRoomCode) {
+      this.socket.emit('monster_list_changed', {
+        roomCode: this.getRoomCode(),
+        action: 'delete',
+        monsterId: id
+      });
+    }
   }
 
   async duplicateMonster(id) {
@@ -1420,11 +1463,12 @@ export class MonsterTracker {
     this.monsters.push(savedMonster);
     this.renderMonsters();
 
-    // Broadcast update
+    // Notify OBS overlay that a monster was added (via duplication)
     if (this.socket && this.getRoomCode) {
-      this.socket.emit('monsterUpdate', {
+      this.socket.emit('monster_list_changed', {
         roomCode: this.getRoomCode(),
-        monsters: this.monsters
+        action: 'add',
+        monster: { id: savedMonster.id, name: savedMonster.name, hp: savedMonster.hp, hpMax: savedMonster.hpMax }
       });
     }
   }

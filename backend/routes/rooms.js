@@ -220,4 +220,50 @@ router.delete('/rooms/:id', optionalAuth, async (req, res) => {
   }
 });
 
+// Get overlay settings for a room
+router.get('/rooms/:id/overlay-settings', async (req, res) => {
+  try {
+    const settings = await Room.getOverlaySettings(req.params.id);
+    res.json(settings);
+  } catch (error) {
+    console.error('Error getting overlay settings:', error);
+    res.status(500).json({ error: 'Failed to get overlay settings' });
+  }
+});
+
+// Update overlay settings for a room (GM only)
+router.put('/rooms/:id/overlay-settings', optionalAuth, async (req, res) => {
+  try {
+    if (req.user) {
+      const isGM = await Room.isGM(req.params.id, req.user.id);
+      if (!isGM) {
+        return res.status(403).json({ error: 'Only the GM can update overlay settings' });
+      }
+    }
+
+    const allowedKeys = [
+      'enabled', 'showNames', 'showHpNumbers', 'partyPosition', 'enemyPosition',
+      'opacity', 'fontFamily', 'fontSize', 'primaryColor', 'lowHpColor',
+      'ghostBarColor', 'headerColor', 'headerFont', 'headerFontSize',
+      'monsterNameColor', 'playerNameColor', 'playerTagFont', 'playerTagFontSize',
+      'playerTagColor', 'hiddenEntities'
+    ];
+    const settings = {};
+    for (const key of allowedKeys) {
+      if (req.body[key] !== undefined) {
+        settings[key] = req.body[key];
+      }
+    }
+
+    const updated = await Room.updateOverlaySettings(req.params.id, settings);
+    if (!updated) {
+      return res.status(404).json({ error: 'Room not found' });
+    }
+    res.json(updated);
+  } catch (error) {
+    console.error('Error updating overlay settings:', error);
+    res.status(500).json({ error: 'Failed to update overlay settings' });
+  }
+});
+
 export default router;

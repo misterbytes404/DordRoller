@@ -11,6 +11,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Health Bar Overlay** — Persona-inspired JRPG health bars on the OBS overlay (designed for **1920×1080**)
+  - Grouped display: Party and Enemies with separate configurable corner positions
+  - Group headers ("PARTY" / "ENEMIES") with configurable font, size, and color
+  - Smooth bar animations: sliding fill, ghost bar trail on damage, heal effects
+  - Death state: greyscale + dimmed bars for entities at 0 HP
+  - Max 10 bars per group (party and enemies tracked independently)
+  - Per-entity visibility toggles from GM panel
+  - Manual sync button to refresh overlay state from current monster cards and connected players
+
+- **Player Tag Display** — Shows the player's identity under their health bar on the OBS overlay
+  - Displays "Player: {TwitchName}" beneath each player's health bar
+  - Service icon before the tag (Twitch logo for Twitch users, generic user icon as fallback)
+  - Future-proofed icon mapping for Discord, Google, and YouTube auth providers
+  - Full typography controls: independent font family, font size (8–24px), and color
+  - Respects Show Names toggle — hides when names are hidden
+
+- **GM Overlay Settings Panel** — Full overlay customization from the GM toolbar
+  - Enable/disable overlay, name labels, and HP numbers
+  - Typography section: independent bar font/size, header font/size, and player tag font/size (6 font options each)
+  - Colors section: primary bar, low HP, ghost bar, header text, monster names, player names, player tag
+  - Layout section: visual position picker for party and enemy groups (4 corners)
+  - Visible Entities section: toggle individual monsters/players on the overlay
+  - Sync Overlay button: bulk-pushes current monster and player state to the backend
+  - All settings persist to database (JSONB) and sync in real-time via WebSocket
+
 - **Monster Roll Buttons** — Expandable roll panel on each monster card for quick dice rolls
   - Toggle button reveals/hides roll panel with smooth animation
   - **Initiative Roll** — d20 + Dex modifier with editable modifier input
