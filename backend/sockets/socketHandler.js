@@ -15,7 +15,9 @@ function getRoom(roomCode) {
   if (!Object.prototype.hasOwnProperty.call(rooms, roomCode)) {
     rooms[roomCode] = {
       gm: null,
-      players: {}
+      players: {},
+      monsters: {},
+      overlaySettings: {}
     };
   }
   return rooms[roomCode];
@@ -42,6 +44,40 @@ function broadcastPlayerList(io, roomCode) {
   io.to(room.gm).emit('player_list_update', playerList);
 }
 
+//Overlay Entity Helper (monsters + players)
+function buildEntityList(roomCode) {
+  const room = rooms[roomCode];
+  if (!room) return [];
+
+  const entities = [];
+
+  //Add monsters
+  for (const [id,monster] of Object.entries(room.monsters)) {
+    entities.push({
+      id,
+      name: monster.name,
+      hp: monster.hp,
+      hpMax: monster.hpMax,
+      type: 'monster'
+      });
+}
+
+  //Add players
+  for (const [socketID, player] of Object.entries(room.players)) {
+    if (player.summary?.currentHp && player.summary?.maxHp) {
+      entities.push({
+        id: socketID,
+        name: player.summary.characterName || player.playerName,
+        hp: Number(player.summary.currentHp),
+        hpMax: Number(player.summary.maxHp),
+        type: 'player'
+      });
+    }
+  }
+
+  return entities;
+}
+
 export const setupSocketHandlers = (io) => {
   io.on('connection', (socket) => {
     console.log(`Client connected: ${socket.id}`);
@@ -49,6 +85,7 @@ export const setupSocketHandlers = (io) => {
     // Room management - basic join (for OBS client)
     socket.on('join_room', (roomCode) => {
       socket.join(roomCode);
+      socket.roomCode = roomCode;
       console.log(`Socket ${socket.id} joined room: ${roomCode}`);
       socket.emit('room_joined', { roomCode });
     });
@@ -161,6 +198,17 @@ export const setupSocketHandlers = (io) => {
         
         // Update GM's player list
         broadcastPlayerList(io, roomCode);
+        
+        //Broadcast HP update to room (for OBS health bars)
+        if (summaryData.currentHp && summaryData.maxHp) {
+          io.to(roomCode).emit('broadcast_hp_update', {
+            id: socket.id,
+            name: summaryData.characterName || 'Unknown',
+            hp: Number(summaryData.currentHp),
+            hpMax: Number(summaryData.maxHp),
+            type: 'player'
+          });
+        }
       }
     });
 
@@ -195,6 +243,76 @@ export const setupSocketHandlers = (io) => {
         socketId: socket.id,
         sheetData
       });
+    });
+
+    // Health Bar Events
+
+    // GM updates monster health bar via slider
+    socket.on('monster_hp_update', (data) => {
+      const roomCode = socket.roomCode;
+      if (!roomCode || !socket.isGM || !rooms[roomCode]) return;
+
+      const { monsterId, name, hp, hpMax } = data;
+      const room = rooms[roomCode];
+
+      // Store updated monster in room state
+      room.monsters[monsterId] = { name, hp, hpMax };
+
+      // Broadcast updated monster health to all clients in the room
+      io.to(roomCode).emit('broadcast_hp_update', {
+        id: monsterId,
+        name,
+        hp,
+        hpMax,
+        type: 'monster'
+      });
+    });
+
+    // GM adds or removes a monster
+    socket.on('monster_list_changed', (data) => {
+      const roomCode = socket.roomCode;
+      if (!roomCode || !socket.isGM || !rooms[roomCode]) return;
+
+      const {action, monsterId, monster} = data;
+      const room = rooms[roomCode];
+
+      if (action === 'add' && monster) {
+        room.monsters[monsterId] = {
+          name: monster.name,
+          hp: monster.hp,
+          hpMax: monster.hpMax,
+        };
+      } else if (action === 'delete') {
+        delete room.monsters[monsterId];
+      }
+
+      // Send full updated list to room
+      io.to(roomCode).emit('broadcast_entity_list', buildEntityList(roomCode));
+    });
+
+    // OBS client request current entity list on connect
+    socket.on('request_entity_list', () => {
+      const roomCode = socket.roomCode;
+      if (!roomCode) return;
+
+      socket.emit('broadcast_entity_list', buildEntityList(roomCode));
+
+      // Send current overlay settings if they exist
+      const room = rooms[roomCode];
+      if (room?.overlaySettings) {
+        socket.emit('overlay_settings_update', room.overlaySettings);
+      }
+    });
+
+    // GM updates overlay settings (colors, toggles)
+    socket.on('overlay_settings_update', (settings) => {
+      const roomCode = socket.roomCode;
+      if (!roomCode || !socket.isGM || !rooms[roomCode]) return;
+
+      rooms[roomCode].overlaySettings = settings;
+
+      // Broadcast to room
+      io.to(roomCode).emit('overlay_settings_update', settings);
     });
 
     // GM roll events

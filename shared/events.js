@@ -21,7 +21,15 @@ export const SOCKET_EVENTS = {
   // Stat Updates (Future)
   UPDATE_MONSTER: 'update_monster',
   UPDATE_PLAYER: 'update_player',
-  DELETE_ENTITY: 'delete_entity'
+  DELETE_ENTITY: 'delete_entity',
+
+  // Health Bar Overlay
+  MONSTER_HP_UPDATE: 'monster_hp_update',
+  BROADCAST_HP_UPDATE: 'broadcast_hp_update',
+  BROADCAST_ENTITY_LIST: 'broadcast_entity_list',
+  OVERLAY_SETTINGS_UPDATE: 'overlay_settings_update',
+  REQUEST_ENTITY_LIST: 'request_entity_list',
+  MONSTER_LIST_UPDATE: 'monster_list_update'
 };
 
 // Data structure templates
