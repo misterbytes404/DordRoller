@@ -220,6 +220,12 @@ export async function initializeDatabase() {
         ADD COLUMN IF NOT EXISTS overlay_settings JSONB DEFAULT '{}'::jsonb;
     `);
 
+    // Add overlay_defaults column to users table (GM saved defaults)
+    await client.query(`
+      ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS overlay_defaults JSONB DEFAULT NULL;
+    `);
+
     console.log('✅ Database schema initialized (Twitch SSO, room membership, sessions)');
   } catch (err) {
     console.error('❌ Failed to initialize database schema:', err.message);

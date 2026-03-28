@@ -22,6 +22,8 @@ const DEFAULTS = {
   playerTagFont: 'Segoe UI',
   playerTagFontSize: 12,
   playerTagColor: '#aaaaaa',
+  rollSoundEnabled: true,
+  rollSoundVolume: 50,
   hiddenEntities: []
 };
 
@@ -319,6 +321,22 @@ export class OverlaySettings {
           </div>
         </div>
 
+        <!-- Roll Sound -->
+        <div class="settings-group">
+          <h4><i class="fa-solid fa-volume-high"></i> Roll Sound</h4>
+          <div class="setting-row">
+            <label for="overlay-roll-sound">Enable Roll Sound</label>
+            <label class="toggle-switch">
+              <input type="checkbox" id="overlay-roll-sound" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="setting-row">
+            <label for="overlay-roll-volume">Volume: <span id="overlay-roll-volume-value">50%</span></label>
+            <input type="range" id="overlay-roll-volume" min="0" max="100" value="50" step="5">
+          </div>
+        </div>
+
         <!-- Visible Entities -->
         <div class="settings-group">
           <h4><i class="fa-solid fa-eye"></i> Visible Entities</h4>
@@ -327,8 +345,16 @@ export class OverlaySettings {
           </div>
         </div>
 
-        <!-- Sync -->
+        <!-- Save / Load / Sync -->
         <div class="settings-group">
+          <div class="settings-button-row">
+            <button id="overlay-save-defaults-btn" class="overlay-action-btn" type="button" title="Save current settings as your account default">
+              <i class="fa-solid fa-floppy-disk"></i> Save as Default
+            </button>
+            <button id="overlay-load-defaults-btn" class="overlay-action-btn" type="button" title="Load your saved default settings into this room">
+              <i class="fa-solid fa-download"></i> Load Saved Settings
+            </button>
+          </div>
           <button id="overlay-sync-btn" class="overlay-sync-btn" type="button">
             <i class="fa-solid fa-arrows-rotate"></i> Sync Overlay
           </button>
@@ -397,9 +423,88 @@ export class OverlaySettings {
       document.getElementById('overlay-player-tag-font-size-label').textContent = `${v}px`;
     });
 
+    this.bindToggle('overlay-roll-sound', 'rollSoundEnabled');
+    this.bindRange('overlay-roll-volume', 'rollSoundVolume', (v) => {
+      document.getElementById('overlay-roll-volume-value').textContent = `${v}%`;
+    });
+
     const syncBtn = document.getElementById('overlay-sync-btn');
     if (syncBtn) {
       syncBtn.addEventListener('click', () => this.syncOverlay());
+    }
+
+    const saveDefaultsBtn = document.getElementById('overlay-save-defaults-btn');
+    if (saveDefaultsBtn) {
+      saveDefaultsBtn.addEventListener('click', () => this.saveDefaults());
+    }
+
+    const loadDefaultsBtn = document.getElementById('overlay-load-defaults-btn');
+    if (loadDefaultsBtn) {
+      loadDefaultsBtn.addEventListener('click', () => this.loadDefaults());
+    }
+  }
+
+  async saveDefaults() {
+    const btn = document.getElementById('overlay-save-defaults-btn');
+    try {
+      if (btn) btn.disabled = true;
+      const { hiddenEntities, ...settingsToSave } = this.settings;
+      const response = await fetch(`${API_URL}/users/me/overlay-defaults`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(settingsToSave)
+      });
+      if (response.ok) {
+        if (btn) {
+          btn.innerHTML = '<i class="fa-solid fa-check"></i> Saved!';
+          setTimeout(() => { btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Save as Default'; }, 2000);
+        }
+      } else if (response.status === 401) {
+        alert('You must be logged in to save defaults.');
+      } else {
+        alert('Failed to save defaults.');
+      }
+    } catch (error) {
+      console.error('Error saving overlay defaults:', error);
+      alert('Failed to save defaults.');
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  async loadDefaults() {
+    const btn = document.getElementById('overlay-load-defaults-btn');
+    try {
+      if (btn) btn.disabled = true;
+      const response = await fetch(`${API_URL}/users/me/overlay-defaults`, {
+        credentials: 'include'
+      });
+      if (response.ok) {
+        const defaults = await response.json();
+        this.settings = {
+          ...DEFAULTS,
+          ...defaults,
+          hiddenEntities: [...(this.settings.hiddenEntities || [])]
+        };
+        this.updateControls();
+        this.onSettingChanged();
+        if (btn) {
+          btn.innerHTML = '<i class="fa-solid fa-check"></i> Loaded!';
+          setTimeout(() => { btn.innerHTML = '<i class="fa-solid fa-download"></i> Load Saved Settings'; }, 2000);
+        }
+      } else if (response.status === 404) {
+        alert('No saved defaults found. Save your current settings first.');
+      } else if (response.status === 401) {
+        alert('You must be logged in to load defaults.');
+      } else {
+        alert('Failed to load defaults.');
+      }
+    } catch (error) {
+      console.error('Error loading overlay defaults:', error);
+      alert('Failed to load defaults.');
+    } finally {
+      if (btn) btn.disabled = false;
     }
   }
 
@@ -565,6 +670,10 @@ export class OverlaySettings {
     setVal('overlay-player-tag-font', s.playerTagFont);
     setVal('overlay-player-tag-font-size', s.playerTagFontSize);
     setVal('overlay-player-tag-color', s.playerTagColor);
+    setChecked('overlay-roll-sound', s.rollSoundEnabled);
+    setVal('overlay-roll-volume', s.rollSoundVolume);
+    const rollVolLabel = document.getElementById('overlay-roll-volume-value');
+    if (rollVolLabel) rollVolLabel.textContent = `${s.rollSoundVolume}%`;
 
     const headerSizeLabel = document.getElementById('overlay-header-font-size-label');
     if (headerSizeLabel) headerSizeLabel.textContent = `${s.headerFontSize}px`;

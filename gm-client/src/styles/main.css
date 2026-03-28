@@ -1917,6 +1917,7 @@ input[type="range"]::-moz-range-thumb {
   justify-content: center;
   gap: 6px;
   transition: all 0.2s ease;
+  margin-top: 8px;
 }
 
 .overlay-sync-btn:hover {
@@ -1931,4 +1932,38 @@ input[type="range"]::-moz-range-thumb {
 
 .overlay-sync-btn:hover i {
   transform: rotate(180deg);
+}
+
+/* Save/Load Default Buttons */
+.settings-button-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 0;
+}
+
+.overlay-action-btn {
+  flex: 1;
+  padding: 8px 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.overlay-action-btn:hover {
+  background: var(--accent-color);
+  color: var(--bg-primary);
+  border-color: var(--accent-color);
+}
+
+.overlay-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }

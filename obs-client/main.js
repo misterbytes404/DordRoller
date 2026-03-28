@@ -1,5 +1,18 @@
 // OBS Client — Roll Display + Persona-style Health Bars
 
+// --- Roll Sound ---
+let rollSound = null;
+let rollSoundEnabled = true;
+let rollSoundVolume = 0.5;
+
+const soundSrc = 'sounds/DieRoll.mp3';
+try {
+  const audio = new Audio(soundSrc);
+  audio.addEventListener('canplaythrough', () => { rollSound = audio; }, { once: true });
+  audio.addEventListener('error', () => { rollSound = null; });
+  audio.load();
+} catch { /* no-op if Audio unavailable */ }
+
 const urlParams = new URLSearchParams(window.location.search);
 const roomFromUrl = urlParams.get('room');
 let ROOM_CODE = 'game1';
@@ -27,7 +40,16 @@ socket.on('broadcast_roll', (rollData) => {
   displayRoll(rollData);
 });
 
+function playRollSound() {
+  if (!rollSoundEnabled || !rollSound) return;
+  const clone = rollSound.cloneNode();
+  clone.volume = rollSoundVolume;
+  clone.play().catch(() => {});
+}
+
 function displayRoll(rollData) {
+  playRollSound();
+
   const display = document.getElementById('roll-display');
   const label = display.querySelector('.roll-label');
   const largeResult = document.getElementById('large-result');
@@ -359,6 +381,10 @@ function applySettings() {
   document.querySelectorAll('.group-label').forEach(label => {
     label.style.fontFamily = `'${headerFont}', sans-serif`;
   });
+
+  // Roll sound settings
+  rollSoundEnabled = overlaySettings.rollSoundEnabled !== false;
+  rollSoundVolume = (overlaySettings.rollSoundVolume ?? 50) / 100;
 
   // Player tag styling
   const playerTagFont = overlaySettings.playerTagFont || 'Segoe UI';

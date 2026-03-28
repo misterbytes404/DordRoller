@@ -4,6 +4,56 @@ import { authenticateToken, optionalAuth } from './auth.js';
 
 const router = express.Router();
 
+// ===================== USER OVERLAY DEFAULTS =====================
+// (Must be before /rooms/:id routes to avoid param matching)
+
+// Save overlay settings as user defaults
+router.put('/users/me/overlay-defaults', authenticateToken, async (req, res) => {
+  try {
+    const { default: User } = await import('../models/User.js');
+
+    const allowedKeys = [
+      'enabled', 'showNames', 'showHpNumbers', 'partyPosition', 'enemyPosition',
+      'opacity', 'fontFamily', 'fontSize', 'primaryColor', 'lowHpColor',
+      'ghostBarColor', 'headerColor', 'headerFont', 'headerFontSize',
+      'monsterNameColor', 'playerNameColor', 'playerTagFont', 'playerTagFontSize',
+      'playerTagColor', 'rollSoundEnabled', 'rollSoundVolume'
+    ];
+    const settings = {};
+    for (const key of allowedKeys) {
+      if (req.body[key] !== undefined) {
+        settings[key] = req.body[key];
+      }
+    }
+
+    const result = await User.saveOverlayDefaults(req.user.id, settings);
+    if (!result) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.json({ message: 'Overlay defaults saved' });
+  } catch (error) {
+    console.error('Error saving overlay defaults:', error);
+    res.status(500).json({ error: 'Failed to save overlay defaults' });
+  }
+});
+
+// Load overlay defaults for current user
+router.get('/users/me/overlay-defaults', authenticateToken, async (req, res) => {
+  try {
+    const { default: User } = await import('../models/User.js');
+    const defaults = await User.getOverlayDefaults(req.user.id);
+    if (!defaults) {
+      return res.status(404).json({ error: 'No saved defaults found' });
+    }
+    res.json(defaults);
+  } catch (error) {
+    console.error('Error loading overlay defaults:', error);
+    res.status(500).json({ error: 'Failed to load overlay defaults' });
+  }
+});
+
+// ===================== ROOM ROUTES =====================
+
 // Get room by code (public - for joining)
 router.get('/rooms/code/:code', async (req, res) => {
   try {
@@ -246,7 +296,7 @@ router.put('/rooms/:id/overlay-settings', optionalAuth, async (req, res) => {
       'opacity', 'fontFamily', 'fontSize', 'primaryColor', 'lowHpColor',
       'ghostBarColor', 'headerColor', 'headerFont', 'headerFontSize',
       'monsterNameColor', 'playerNameColor', 'playerTagFont', 'playerTagFontSize',
-      'playerTagColor', 'hiddenEntities'
+      'playerTagColor', 'rollSoundEnabled', 'rollSoundVolume', 'hiddenEntities'
     ];
     const settings = {};
     for (const key of allowedKeys) {

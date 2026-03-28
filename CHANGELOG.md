@@ -11,6 +11,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Roll Sound Effect** — Plays a dice roll sound on the OBS overlay when any roll is received
+  - Preloads `sounds/DieRoll.mp3` with silent fallback if file is missing
+  - Supports rapid-fire rolls (overlapping audio via cloned nodes)
+  - GM toggle: Enable/disable roll sound from Overlay Settings panel
+  - GM slider: Adjustable volume (0–100%) from Overlay Settings panel
+  - Settings persist to database and sync in real-time via WebSocket
+
+- **Save / Load Overlay Defaults** — GMs can save overlay settings as account-level defaults
+  - "Save as Default" button stores current settings (minus entity visibility) to the GM's account
+  - "Load Saved Settings" button applies saved defaults to the current room
+  - Enables quick overlay setup when creating new rooms
+  - Requires authentication (Twitch SSO)
+  - Settings persist to database and sync in real-time via WebSocket
+
 - **Health Bar Overlay** — Persona-inspired JRPG health bars on the OBS overlay (designed for **1920×1080**)
   - Grouped display: Party and Enemies with separate configurable corner positions
   - Group headers ("PARTY" / "ENEMIES") with configurable font, size, and color

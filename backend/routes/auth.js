@@ -26,6 +26,13 @@ export const authenticateToken = async (req, res, next) => {
     if (process.env.AUTH_ENABLED === 'false') {
         req.user = { id: 'dev-gm', username: 'dev', displayName: 'Dev GM', avatarUrl: null, twitchId: null };
         req.sessionToken = 'dev-session';
+        // Ensure dev user exists in database for features that write to users table
+        const { default: pool } = await import('../config/database.js');
+        await pool.query(
+          `INSERT INTO users (id, auth_type, username, password_hash, display_name)
+           VALUES ('dev-gm', 'local', 'dev', 'dev-no-login', 'Dev GM')
+           ON CONFLICT (id) DO NOTHING`
+        );
         return next();
     }
 

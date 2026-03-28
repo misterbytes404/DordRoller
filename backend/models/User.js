@@ -392,6 +392,24 @@ class User {
     return result.rows[0];
   }
 
+  // ==================== OVERLAY DEFAULTS ====================
+
+  static async saveOverlayDefaults(userId, settings) {
+    const result = await pool.query(
+      `UPDATE users SET overlay_defaults = $2 WHERE id = $1 RETURNING id`,
+      [userId, JSON.stringify(settings)]
+    );
+    return result.rows[0] || null;
+  }
+
+  static async getOverlayDefaults(userId) {
+    const result = await pool.query(
+      `SELECT overlay_defaults FROM users WHERE id = $1`,
+      [userId]
+    );
+    return result.rows[0]?.overlay_defaults || null;
+  }
+
   // ==================== ROOM QUERIES ====================
   static async getRooms(userId) {
     const result = await pool.query(
