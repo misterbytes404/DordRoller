@@ -3,7 +3,7 @@
 ## TL;DR
 Add CSS 3D tumbling die animations and sound effects to the OBS overlay roll display. Each die type (d4, d6, d8, d10, d12, d20) gets a distinct stylized 3D shape that tumbles for ~2s before the result appears beneath it. Four sound slots (roll, reveal, nat20 fanfare, nat1 dread) stored in PostgreSQL BYTEA, tied to user's Twitch account for cross-room persistence. GM uploads custom sounds via overlay settings panel. Animation position configurable. Separate GM toggles for animation and sound.
 
-## Decisions
+## Design Notes
 - **OBS overlay only** — GM hears via stream audio
 - **Configurable position** via overlay settings (center / corners)
 - **~2 second** tumble animation before result reveal
