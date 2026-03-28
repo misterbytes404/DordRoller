@@ -11,6 +11,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Action Builder** — Guided form to build properly formatted actions & reactions that generate roll buttons
+  - Available on both the Add Monster form and inline Edit form
+  - Attack type selector: Melee/Ranged Weapon, Melee/Ranged Spell, Saving Throw, or Other
+  - Contextual fields: to-hit bonus + reach/range for attacks, DC + ability for saves
+  - Multiple damage entries with dice expression and damage type
+  - Auto-calculates average damage from dice notation
+  - Generated text follows the standard D&D format the roll panel parser recognizes
+  - Editing or adding actions clears the cached attack data so roll buttons always regenerate
+
+- **Custom Monster Library** — GMs can save monsters to their account for reuse across rooms
+  - Save button (bookmark icon) on every monster card in the tracker
+  - Saved monsters appear in search results with a star icon and "(Custom)" tag
+  - Quick-add custom monsters to the current encounter with one click
+  - Delete custom monsters from the library directly in search results
+  - Account-scoped — monsters are private to the GM who created them
+  - Requires authentication (Twitch SSO)
+
 - **Roll Sound Effect** — Plays a dice roll sound on the OBS overlay when any roll is received
   - Preloads `sounds/DieRoll.mp3` with silent fallback if file is missing
   - Supports rapid-fire rolls (overlapping audio via cloned nodes)

@@ -45,6 +45,8 @@ DordRoller/
 | **Dice Roller** | Roll d4, d6, d8, d10, d12, d20, d100 with custom labels |
 | **Monster Tracker** | Search D&D 5e bestiary, track HP with visual health bars, roll attacks/saves/checks directly from cards |
 | **Monster Roll Buttons** | Expandable panel per monster with initiative, ability checks, saves, attacks & damage — all with editable modifiers |
+| **Action Builder** | Guided form to compose actions & reactions in the correct format so the roll panel auto-generates attack and damage buttons |
+| **Custom Monster Library** | Save any monster to your account and pull it into future rooms — appears in search with a ⭐ Custom tag |
 | **Room Management** | Generate unique room codes for player sessions |
 | **Live Broadcasting** | Instant sync to OBS overlay and connected players |
 
@@ -334,6 +336,8 @@ Both endpoints return a JWT token identical to Twitch OAuth tokens.
 - [x] PostgreSQL database with character sheet persistence
 - [x] GM dice roller with room broadcasting
 - [x] Monster tracker with HP bars
+- [x] Action Builder for monster actions & reactions
+- [x] Custom Monster Library (account-scoped)
 - [x] Player character sheet (D&D 5e)
 - [x] Quick roll buttons & combat dice system
 - [x] GM Roll Log widget
@@ -346,7 +350,28 @@ Both endpoints return a JWT token identical to Twitch OAuth tokens.
 
 ---
 
-## 🐛 Known Issues
+## � Using the Action Builder
+
+The **Action Builder** lets you compose monster actions and reactions so the roll panel generates clickable attack and damage buttons automatically.
+
+1. **Open the builder** — Click the "Action Builder" button below the Actions or Reactions textarea (available on both the Add Monster form and inline Edit form).
+2. **Pick a type** — Select the attack type from the dropdown:
+   - **Melee/Ranged Weapon** or **Melee/Ranged Spell** — shows To Hit, Reach/Range fields
+   - **Saving Throw** — shows DC and ability selector
+   - **Other** — free-form (no attack/save fields)
+3. **Add damage** — Enter a dice expression (e.g. `2d6+4`) and choose a damage type. Click **+** to add additional damage entries (e.g. extra fire damage).
+4. **Extra text** — Optionally add flavor text or conditions.
+5. **Click "Add Action to List"** — The builder appends a properly formatted line to the textarea, e.g.:
+   ```
+   Longsword: Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: 9 (1d8+4) slashing damage.
+   ```
+6. **Save the monster** — When you add or save the monster, the roll panel will parse the actions text and generate **Roll to Hit** and **Damage** buttons for each attack.
+
+> **Tip:** You can also type actions directly into the textarea using the same format. Each action should be on its own line, starting with `Name: ...`.
+
+---
+
+## �🐛 Known Issues
 
 - **Monster Type Parsing** — Some bestiary entries don't parse correctly
 

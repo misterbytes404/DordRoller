@@ -209,6 +209,7 @@ export class MonsterTracker {
     this.roomId = null;  // Database room ID for persistence
     this.editingId = null;  // Track which monster is being edited
     this.bestiary = new Map();  // Map of name -> bestiary monster data
+    this.customMonsters = [];  // Custom monsters saved to user account
     this.debounceTimer = null;  // For debouncing search input
     this.socket = socket;  // Socket.io connection for roll broadcasting
     this.getRoomCode = getRoomCode;  // Function to get current room code
@@ -305,8 +306,12 @@ export class MonsterTracker {
 
   async init() {
     await this.loadBestiary();
+    await this.loadCustomMonsters();
     const addBtn = document.getElementById('add-monster-btn');
     addBtn.addEventListener('click', () => this.addMonster());
+
+    // Initialize action builder UI on the add-monster form
+    this.initActionBuilders();
 
     // Add search functionality with debouncing
     const searchInput = document.getElementById('monster-search');
@@ -320,6 +325,203 @@ export class MonsterTracker {
         searchResults.style.display = 'none';
       }
     });
+  }
+
+  initActionBuilders() {
+    // Wire up all action builder toggles and forms on the page
+    document.querySelectorAll('.action-builder-toggle').forEach(btn => {
+      const targetId = btn.dataset.target;
+      const builder = document.getElementById(`action-builder-${targetId}`);
+      if (!builder) return;
+
+      btn.addEventListener('click', () => {
+        const isVisible = builder.style.display !== 'none';
+        builder.style.display = isVisible ? 'none' : 'block';
+        btn.innerHTML = isVisible
+          ? '<i class="fa-solid fa-plus-circle"></i> Action Builder'
+          : '<i class="fa-solid fa-minus-circle"></i> Hide Builder';
+      });
+
+      this.setupBuilderEvents(builder, targetId);
+    });
+  }
+
+  setupBuilderEvents(builder, textareaId) {
+    const typeSelect = builder.querySelector('.builder-type');
+    const attackFields = builder.querySelector('.builder-attack-fields');
+    const saveFields = builder.querySelector('.builder-save-fields');
+
+    // Toggle attack/save fields based on type
+    typeSelect.addEventListener('change', () => {
+      const val = typeSelect.value;
+      if (val === 'save') {
+        attackFields.style.display = 'none';
+        saveFields.style.display = '';
+      } else if (val === 'other') {
+        attackFields.style.display = 'none';
+        saveFields.style.display = 'none';
+      } else {
+        attackFields.style.display = '';
+        saveFields.style.display = 'none';
+      }
+    });
+    // Fire once to set initial state
+    typeSelect.dispatchEvent(new Event('change'));
+
+    // Add extra damage entry
+    builder.querySelectorAll('.builder-add-damage').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const damageList = builder.querySelector('.builder-damage-list');
+        const newEntry = document.createElement('div');
+        newEntry.className = 'builder-row builder-damage-entry';
+        newEntry.innerHTML = `
+          <label>Damage: <input type="text" class="builder-damage-dice" placeholder="1d6" style="width:70px"></label>
+          <select class="builder-damage-type">
+            <option value="slashing">Slashing</option><option value="piercing">Piercing</option>
+            <option value="bludgeoning">Bludgeoning</option><option value="fire">Fire</option>
+            <option value="cold">Cold</option><option value="lightning">Lightning</option>
+            <option value="thunder">Thunder</option><option value="acid">Acid</option>
+            <option value="poison">Poison</option><option value="necrotic">Necrotic</option>
+            <option value="radiant">Radiant</option><option value="force">Force</option>
+            <option value="psychic">Psychic</option>
+          </select>
+          <button type="button" class="builder-remove-damage" title="Remove">×</button>
+        `;
+        damageList.appendChild(newEntry);
+        newEntry.querySelector('.builder-remove-damage').addEventListener('click', () => newEntry.remove());
+      });
+    });
+
+    // Add action button
+    builder.querySelector('.builder-add-action').addEventListener('click', () => {
+      const text = this.buildActionText(builder);
+      if (!text) return;
+      const textarea = document.getElementById(textareaId);
+      textarea.value = textarea.value ? textarea.value + '\n' + text : text;
+      // Clear builder fields
+      builder.querySelector('.builder-name').value = '';
+      builder.querySelector('.builder-extra').value = '';
+      builder.querySelectorAll('.builder-damage-dice').forEach(el => el.value = '');
+      // Remove extra damage entries (keep first)
+      const entries = builder.querySelectorAll('.builder-damage-entry');
+      entries.forEach((entry, idx) => { if (idx > 0) entry.remove(); });
+    });
+  }
+
+  buildActionText(builder) {
+    const name = builder.querySelector('.builder-name').value.trim();
+    if (!name) return null;
+
+    const type = builder.querySelector('.builder-type').value;
+    const extra = builder.querySelector('.builder-extra').value.trim();
+    let parts = [];
+
+    if (type === 'mw' || type === 'rw' || type === 'ms' || type === 'rs') {
+      const typeLabel = { mw: 'Melee Weapon Attack', rw: 'Ranged Weapon Attack', ms: 'Melee Spell Attack', rs: 'Ranged Spell Attack' }[type];
+      const toHit = parseInt(builder.querySelector('.builder-to-hit').value) || 0;
+      const hitSign = toHit >= 0 ? `+${toHit}` : `${toHit}`;
+
+      let reachRange = '';
+      if (type === 'mw' || type === 'ms') {
+        const reach = builder.querySelector('.builder-reach').value || '5';
+        reachRange = `reach ${reach} ft.`;
+      } else {
+        const range = builder.querySelector('.builder-range').value.trim() || '30';
+        reachRange = `range ${range} ft.`;
+      }
+
+      parts.push(`${typeLabel}: ${hitSign} to hit, ${reachRange}, one target.`);
+
+      // Damage
+      const damageEntries = builder.querySelectorAll('.builder-damage-entry');
+      const damageParts = [];
+      damageEntries.forEach(entry => {
+        const dice = entry.querySelector('.builder-damage-dice').value.trim();
+        const dmgType = entry.querySelector('.builder-damage-type').value;
+        if (dice) {
+          const avg = this.calcDiceAverage(dice);
+          damageParts.push(`${avg} (${dice}) ${dmgType} damage`);
+        }
+      });
+      if (damageParts.length > 0) {
+        parts.push(`Hit: ${damageParts.join(' plus ')}.`);
+      }
+    } else if (type === 'save') {
+      const dc = builder.querySelector('.builder-dc').value || '13';
+      const ability = builder.querySelector('.builder-save-ability').value;
+      parts.push(`DC ${dc} ${ability} saving throw.`);
+
+      const damageEntries = builder.querySelectorAll('.builder-damage-entry');
+      const damageParts = [];
+      damageEntries.forEach(entry => {
+        const dice = entry.querySelector('.builder-damage-dice').value.trim();
+        const dmgType = entry.querySelector('.builder-damage-type').value;
+        if (dice) {
+          const avg = this.calcDiceAverage(dice);
+          damageParts.push(`${avg} (${dice}) ${dmgType} damage`);
+        }
+      });
+      if (damageParts.length > 0) {
+        parts.push(`${damageParts.join(' plus ')} on a failed save, or half as much on a successful one.`);
+      }
+    }
+
+    if (extra) parts.push(extra);
+
+    return `${name}: ${parts.join(' ')}`;
+  }
+
+  calcDiceAverage(diceStr) {
+    // Parse "2d6+4" -> average
+    const match = diceStr.match(/^(\d+)d(\d+)(?:\s*([+-])\s*(\d+))?$/);
+    if (!match) return 0;
+    const count = parseInt(match[1]);
+    const sides = parseInt(match[2]);
+    const sign = match[3] === '-' ? -1 : 1;
+    const mod = match[4] ? parseInt(match[4]) * sign : 0;
+    return Math.floor(count * (sides + 1) / 2 + mod);
+  }
+
+  getBuilderFieldsHtml(defaultType) {
+    const attackDisplay = (defaultType === 'mw' || defaultType === 'rw' || defaultType === 'ms' || defaultType === 'rs') ? '' : 'display:none;';
+    const saveDisplay = defaultType === 'save' ? '' : 'display:none;';
+    const typeOptions = ['mw', 'rw', 'ms', 'rs', 'save', 'other'];
+    const typeLabels = { mw: 'Melee Weapon', rw: 'Ranged Weapon', ms: 'Melee Spell', rs: 'Ranged Spell', save: 'Saving Throw', other: 'Other' };
+    const dmgTypes = ['slashing','piercing','bludgeoning','fire','cold','lightning','thunder','acid','poison','necrotic','radiant','force','psychic'];
+    const dmgOptions = dmgTypes.map(t => `<option value="${t}">${t.charAt(0).toUpperCase()+t.slice(1)}</option>`).join('');
+    const typeOpts = typeOptions.map(t => `<option value="${t}"${t === defaultType ? ' selected' : ''}>${typeLabels[t]}</option>`).join('');
+
+    return `
+      <div class="builder-row">
+        <input type="text" class="builder-name" placeholder="Action name (e.g. Longsword)">
+        <select class="builder-type">${typeOpts}</select>
+      </div>
+      <div class="builder-row builder-attack-fields" style="${attackDisplay}">
+        <label>To Hit: +<input type="number" class="builder-to-hit" value="0" min="-10" max="30"></label>
+        <label>Reach: <input type="number" class="builder-reach" value="5" min="0"> ft.</label>
+        <label>Range: <input type="text" class="builder-range" placeholder="80/320" style="width:70px"> ft.</label>
+      </div>
+      <div class="builder-row builder-save-fields" style="${saveDisplay}">
+        <label>DC: <input type="number" class="builder-dc" value="13" min="1" max="30"></label>
+        <select class="builder-save-ability">
+          <option value="Strength">STR</option><option value="Dexterity">DEX</option>
+          <option value="Constitution">CON</option><option value="Intelligence">INT</option>
+          <option value="Wisdom">WIS</option><option value="Charisma">CHA</option>
+        </select>
+        <label> saving throw</label>
+      </div>
+      <div class="builder-damage-list">
+        <div class="builder-row builder-damage-entry">
+          <label>Damage: <input type="text" class="builder-damage-dice" placeholder="1d8+4" style="width:70px"></label>
+          <select class="builder-damage-type">${dmgOptions}</select>
+          <button type="button" class="builder-add-damage" title="Add extra damage">+</button>
+        </div>
+      </div>
+      <div class="builder-row">
+        <input type="text" class="builder-extra" placeholder="Extra text">
+      </div>
+      <button type="button" class="builder-add-action"><i class="fa-solid fa-plus"></i> Add Action to List</button>
+    `;
   }
 
   debouncedSearch(query) {
@@ -390,6 +592,18 @@ export class MonsterTracker {
     console.log('Bestiary loaded with', this.bestiary.size, 'monsters');
   }
 
+  async loadCustomMonsters() {
+    try {
+      const response = await fetch(`${API_URL}/custom-monsters`, { credentials: 'include' });
+      if (response.ok) {
+        this.customMonsters = await response.json();
+        console.log('Custom monsters loaded:', this.customMonsters.length);
+      }
+    } catch (error) {
+      console.error('Failed to load custom monsters:', error);
+    }
+  }
+
   searchMonsters(query) {
     const resultsList = document.getElementById('search-results');
     resultsList.innerHTML = '';
@@ -400,12 +614,66 @@ export class MonsterTracker {
 
     const matches = Array.from(this.bestiary.keys())
       .filter(name => name.toLowerCase().includes(query.toLowerCase()))
-      .slice(0, 10);  // Limit to 10 results
+      .slice(0, 10);
 
-    if (matches.length === 0) {
+    // Also search custom monsters
+    const customMatches = this.customMonsters
+      .filter(m => m.name.toLowerCase().includes(query.toLowerCase()))
+      .slice(0, 5);
+
+    if (matches.length === 0 && customMatches.length === 0) {
       resultsList.style.display = 'none';
       return;
     }
+
+    // Render custom monster results first
+    customMatches.forEach(custom => {
+      const li = document.createElement('li');
+      li.className = 'custom-monster-result';
+
+      const infoSpan = document.createElement('span');
+      infoSpan.className = 'monster-search-info';
+      infoSpan.innerHTML = `<i class="fa-solid fa-star custom-star-icon"></i> ${this.escapeHtml(custom.name)} <span class="custom-source-tag">(Custom)</span>`;
+
+      li.addEventListener('click', (e) => {
+        if (e.target.closest('.quick-add-btn') || e.target.closest('.custom-delete-btn')) return;
+        e.preventDefault();
+        e.stopPropagation();
+        this.hideSearchResults();
+        this.selectMonster(custom.name);
+      });
+
+      const btnGroup = document.createElement('span');
+      btnGroup.className = 'custom-btn-group';
+
+      const quickAddBtn = document.createElement('button');
+      quickAddBtn.className = 'quick-add-btn';
+      quickAddBtn.innerHTML = '<i class="fa-solid fa-plus"></i>';
+      quickAddBtn.title = 'Quick add to encounter';
+      quickAddBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.quickAddFromCustom(custom);
+      });
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'custom-delete-btn';
+      deleteBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
+      deleteBtn.title = 'Remove from library';
+      deleteBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.deleteCustomMonster(custom.id);
+      });
+
+      btnGroup.appendChild(quickAddBtn);
+      btnGroup.appendChild(deleteBtn);
+      li.appendChild(infoSpan);
+      li.appendChild(btnGroup);
+      resultsList.appendChild(li);
+    });
+
+    // Render bestiary results
 
     matches.forEach(name => {
       const li = document.createElement('li');
@@ -667,7 +935,7 @@ export class MonsterTracker {
       cr,
       actions,
       reactions,
-      attacks: [],           // Manual entry doesn't have parsed attacks
+      attacks: null,            // Will be parsed from actions text on render
       saveProficiencies: {}, // Manual entry doesn't have save proficiencies
       displayOrder: this.monsters.length
     };
@@ -736,9 +1004,23 @@ export class MonsterTracker {
           <label for="edit-cr-${monster.id}">CR:</label><br>
           <input type="text" id="edit-cr-${monster.id}" value="${this.escapeHtml(monster.cr || '')}"><br>
           <label for="edit-actions-${monster.id}">Actions:</label><br>
-          <textarea id="edit-actions-${monster.id}">${this.escapeHtml(monster.actions || '')}</textarea><br>
+          <textarea id="edit-actions-${monster.id}">${this.escapeHtml(monster.actions || '')}</textarea>
+          <button type="button" class="action-builder-toggle" data-target="edit-actions-${monster.id}">
+            <i class="fa-solid fa-plus-circle"></i> Action Builder
+          </button>
+          <div class="action-builder" id="action-builder-edit-actions-${monster.id}" style="display:none;">
+            ${this.getBuilderFieldsHtml('mw')}
+          </div>
+          <br>
           <label for="edit-reactions-${monster.id}">Reactions:</label><br>
-          <textarea id="edit-reactions-${monster.id}">${this.escapeHtml(monster.reactions || '')}</textarea><br>
+          <textarea id="edit-reactions-${monster.id}">${this.escapeHtml(monster.reactions || '')}</textarea>
+          <button type="button" class="action-builder-toggle" data-target="edit-reactions-${monster.id}">
+            <i class="fa-solid fa-plus-circle"></i> Action Builder
+          </button>
+          <div class="action-builder" id="action-builder-edit-reactions-${monster.id}" style="display:none;">
+            ${this.getBuilderFieldsHtml('other')}
+          </div>
+          <br>
           <button class="save-btn" data-id="${monster.id}">Save</button>
           <button class="cancel-btn" data-id="${monster.id}">Cancel</button>
         `;
@@ -918,6 +1200,9 @@ export class MonsterTracker {
           <p><strong>Actions:</strong><br>${this.escapeHtmlWithBreaks(monster.actions)}</p>
           <p><strong>Reactions:</strong><br>${this.escapeHtmlWithBreaks(monster.reactions)}</p>
           <div class="monster-card-actions">
+            <button class="save-custom-btn" data-id="${monster.id}" title="Save to custom monster library">
+              <i class="fa-solid fa-bookmark"></i> Save
+            </button>
             <button class="duplicate-btn" data-id="${monster.id}" title="Create a copy of this monster">
               <i class="fa-solid fa-clone"></i> Duplicate
             </button>
@@ -990,6 +1275,24 @@ export class MonsterTracker {
         this.cancelEdit();
       });
     });
+
+    // Wire up action builders in edit form cards
+    document.querySelectorAll('.monster-card .action-builder-toggle').forEach(btn => {
+      const targetId = btn.dataset.target;
+      const builder = document.getElementById(`action-builder-${targetId}`);
+      if (!builder) return;
+
+      btn.addEventListener('click', () => {
+        const isVisible = builder.style.display !== 'none';
+        builder.style.display = isVisible ? 'none' : 'block';
+        btn.innerHTML = isVisible
+          ? '<i class="fa-solid fa-plus-circle"></i> Action Builder'
+          : '<i class="fa-solid fa-minus-circle"></i> Hide Builder';
+      });
+
+      this.setupBuilderEvents(builder, targetId);
+    });
+
     document.querySelectorAll('.delete-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.preventDefault();
@@ -1004,6 +1307,15 @@ export class MonsterTracker {
         e.preventDefault();
         const id = e.target.closest('.duplicate-btn').dataset.id;
         this.duplicateMonster(id);
+      });
+    });
+
+    // Save to custom library button event listeners
+    document.querySelectorAll('.save-custom-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const id = e.target.closest('.save-custom-btn').dataset.id;
+        this.saveAsCustomMonster(id);
       });
     });
     
@@ -1402,6 +1714,9 @@ export class MonsterTracker {
     monster.actions = newActions;
     monster.reactions = newReactions;
 
+    // Clear cached attacks so roll panel re-parses from updated text
+    monster.attacks = null;
+
     // Save to database
     await this.saveMonsterToDb(monster);
 
@@ -1470,6 +1785,107 @@ export class MonsterTracker {
         action: 'add',
         monster: { id: savedMonster.id, name: savedMonster.name, hp: savedMonster.hp, hpMax: savedMonster.hpMax }
       });
+    }
+  }
+
+  async saveAsCustomMonster(id) {
+    const monster = this.monsters.find(m => m.id == id);
+    if (!monster) return;
+
+    // Strip room-specific fields
+    const customData = { ...monster };
+    delete customData.id;
+    delete customData.roomId;
+    delete customData.displayOrder;
+
+    try {
+      const response = await fetch(`${API_URL}/custom-monsters`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(customData)
+      });
+
+      if (response.ok) {
+        const saved = await response.json();
+        this.customMonsters.push(saved);
+
+        // Visual feedback on the button
+        const btn = document.querySelector(`.save-custom-btn[data-id="${id}"]`);
+        if (btn) {
+          const original = btn.innerHTML;
+          btn.innerHTML = '<i class="fa-solid fa-check"></i> Saved!';
+          btn.disabled = true;
+          setTimeout(() => { btn.innerHTML = original; btn.disabled = false; }, 2000);
+        }
+      } else {
+        const err = await response.json();
+        console.error('Failed to save custom monster:', err.error);
+      }
+    } catch (error) {
+      console.error('Error saving custom monster:', error);
+    }
+  }
+
+  async quickAddFromCustom(custom) {
+    const monsterData = {
+      name: custom.name,
+      source: custom.source,
+      type: custom.type,
+      ac: custom.ac,
+      hp: custom.hpMax || custom.hp,
+      hpMax: custom.hpMax || custom.hp,
+      hitDice: custom.hitDice,
+      speed: custom.speed,
+      str: custom.str,
+      dex: custom.dex,
+      con: custom.con,
+      int: custom.int,
+      wis: custom.wis,
+      cha: custom.cha,
+      saves: custom.saves,
+      skills: custom.skills,
+      senses: custom.senses,
+      languages: custom.languages,
+      cr: custom.cr,
+      traits: custom.traits,
+      actions: custom.actions,
+      legendaryActions: custom.legendaryActions,
+      reactions: custom.reactions,
+      isVisible: false,
+      displayOrder: this.monsters.length + 1
+    };
+
+    const savedMonster = await this.saveMonsterToDb(monsterData);
+    this.monsters.push(savedMonster);
+    this.renderMonsters();
+
+    if (this.socket && this.getRoomCode) {
+      this.socket.emit('monster_list_changed', {
+        roomCode: this.getRoomCode(),
+        action: 'add',
+        monster: { id: savedMonster.id, name: savedMonster.name, hp: savedMonster.hp, hpMax: savedMonster.hpMax }
+      });
+    }
+  }
+
+  async deleteCustomMonster(id) {
+    try {
+      const response = await fetch(`${API_URL}/custom-monsters/${id}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        this.customMonsters = this.customMonsters.filter(m => m.id !== id);
+        // Re-trigger search to refresh results
+        const searchInput = document.getElementById('monster-search');
+        if (searchInput && searchInput.value.trim()) {
+          this.searchMonsters(searchInput.value.trim());
+        }
+      }
+    } catch (error) {
+      console.error('Error deleting custom monster:', error);
     }
   }
 
