@@ -1,7 +1,63 @@
 import express from 'express';
 import { Monster } from '../models/Monster.js';
+import { CustomMonster } from '../models/CustomMonster.js';
+import { authenticateToken } from './auth.js';
 
 const router = express.Router();
+
+// ===================== CUSTOM MONSTER LIBRARY =====================
+
+// Get all custom monsters for the logged-in user
+router.get('/custom-monsters', authenticateToken, async (req, res) => {
+  try {
+    const monsters = await CustomMonster.findByUserId(req.user.id);
+    res.json(monsters);
+  } catch (err) {
+    console.error('Error fetching custom monsters:', err);
+    res.status(500).json({ error: 'Failed to fetch custom monsters' });
+  }
+});
+
+// Save a new custom monster
+router.post('/custom-monsters', authenticateToken, async (req, res) => {
+  try {
+    const monster = await CustomMonster.create(req.user.id, req.body);
+    res.status(201).json(monster);
+  } catch (err) {
+    console.error('Error saving custom monster:', err);
+    res.status(500).json({ error: 'Failed to save custom monster' });
+  }
+});
+
+// Update a custom monster (ownership enforced in query)
+router.put('/custom-monsters/:id', authenticateToken, async (req, res) => {
+  try {
+    const monster = await CustomMonster.update(req.params.id, req.user.id, req.body);
+    if (!monster) {
+      return res.status(404).json({ error: 'Custom monster not found' });
+    }
+    res.json(monster);
+  } catch (err) {
+    console.error('Error updating custom monster:', err);
+    res.status(500).json({ error: 'Failed to update custom monster' });
+  }
+});
+
+// Delete a custom monster (ownership enforced in query)
+router.delete('/custom-monsters/:id', authenticateToken, async (req, res) => {
+  try {
+    const deleted = await CustomMonster.delete(req.params.id, req.user.id);
+    if (!deleted) {
+      return res.status(404).json({ error: 'Custom monster not found' });
+    }
+    res.json({ success: true, message: 'Custom monster deleted' });
+  } catch (err) {
+    console.error('Error deleting custom monster:', err);
+    res.status(500).json({ error: 'Failed to delete custom monster' });
+  }
+});
+
+// ===================== ROOM MONSTER ROUTES =====================
 
 // Get all monsters for a room
 router.get('/rooms/:roomId/monsters', async (req, res) => {

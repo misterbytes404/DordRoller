@@ -213,6 +213,46 @@ export async function initializeDatabase() {
       CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
       CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
     `);
+
+    // Add overlay_settings column to existing rooms table (safe for production)
+    await client.query(`
+      ALTER TABLE rooms
+        ADD COLUMN IF NOT EXISTS overlay_settings JSONB DEFAULT '{}'::jsonb;
+    `);
+
+    // Add overlay_defaults column to users table (GM saved defaults)
+    await client.query(`
+      ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS overlay_defaults JSONB DEFAULT NULL;
+    `);
+
+    // Custom monsters table (GM-saved templates, account-scoped)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS custom_monsters (
+        id VARCHAR(16) PRIMARY KEY,
+        user_id VARCHAR(16) REFERENCES users(id) ON DELETE CASCADE,
+        name VARCHAR(100) NOT NULL,
+        source VARCHAR(50) DEFAULT 'Custom',
+        type VARCHAR(100),
+        ac INTEGER DEFAULT 10,
+        hp INTEGER DEFAULT 1,
+        hp_max INTEGER DEFAULT 1,
+        hit_dice VARCHAR(50),
+        speed VARCHAR(100),
+        abilities JSONB DEFAULT '{"str":10,"dex":10,"con":10,"int":10,"wis":10,"cha":10}',
+        skills TEXT,
+        senses TEXT,
+        languages TEXT,
+        cr VARCHAR(10),
+        actions TEXT,
+        reactions TEXT,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_custom_monsters_user_id ON custom_monsters(user_id);
+    `);
+
     console.log('✅ Database schema initialized (Twitch SSO, room membership, sessions)');
   } catch (err) {
     console.error('❌ Failed to initialize database schema:', err.message);

@@ -307,6 +307,30 @@ export const Room = {
        RETURNING *`
     );
     return result.rows;
+  },
+
+  /**
+   * Get overlay settings for a room
+   */
+  async getOverlaySettings(roomId) {
+    const result = await pool.query(
+      'SELECT overlay_settings FROM rooms WHERE id = $1',
+      [roomId]
+    );
+    return result.rows[0]?.overlay_settings || {};
+  },
+
+  /**
+   * Update overlay settings for a room
+   */
+  async updateOverlaySettings(roomId, settings) {
+    const result = await pool.query(
+      `UPDATE rooms SET overlay_settings = $2, last_active = NOW()
+       WHERE id = $1
+       RETURNING overlay_settings`,
+      [roomId, JSON.stringify(settings)]
+    );
+    return result.rows[0]?.overlay_settings || null;
   }
 };
 

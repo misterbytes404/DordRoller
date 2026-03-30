@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dord Roller - GM Control Panel</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Cinzel:wght@400;700&family=Oswald:wght@400;600&family=Press+Start+2P&family=Rajdhani:wght@400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/src/styles/main.css">
 </head>
 <body>
@@ -16,6 +19,21 @@
         <div id="user-area"></div>
       </div>
     </header>
+
+    <!-- GM Toolbar -->
+    <nav id="gm-toolbar" class="gm-toolbar">
+      <div class="toolbar-item" id="overlay-settings-toolbar-item">
+        <button class="toolbar-btn" id="overlay-settings-btn">
+          <i class="fa-solid fa-sliders"></i> Overlay Settings
+          <i class="fa-solid fa-chevron-down toolbar-chevron"></i>
+        </button>
+        <div class="toolbar-dropdown" id="overlay-settings-dropdown">
+          <div class="toolbar-dropdown-content" id="overlay-settings-panel">
+            <!-- Populated by overlaySettings.js -->
+          </div>
+        </div>
+      </div>
+    </nav>
 
     <main>
       <section id="room-section">
@@ -130,9 +148,10 @@
           </div>
         </div>
         
-        <!-- Single Roll Button -->
+        <!-- Roll Buttons -->
         <div class="roll-action" style="margin-top: 15px;">
           <button id="roll-btn"><i class="fa-solid fa-dice-d20"></i> Roll Dice</button>
+          <button id="reroll-btn" disabled title="Reroll last dice roll with same settings"><i class="fa-solid fa-rotate-right"></i> Reroll</button>
         </div>
         
         <div id="feedback"></div>
@@ -237,11 +256,127 @@
           </div>
           <div class="field-group">
             <label for="monster-actions">Actions:</label><br>
-            <textarea id="monster-actions" placeholder="e.g., Multiattack. The stalker makes..."></textarea>
+            <textarea id="monster-actions" placeholder="Longsword: Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: 9 (1d8 + 4) slashing damage."></textarea>
+            <button type="button" class="action-builder-toggle" data-target="monster-actions">
+              <i class="fa-solid fa-plus-circle"></i> Action Builder
+            </button>
+            <div class="action-builder" id="action-builder-monster-actions" style="display:none;">
+              <div class="builder-row">
+                <input type="text" class="builder-name" placeholder="Action name (e.g. Longsword)">
+                <select class="builder-type">
+                  <option value="mw">Melee Weapon</option>
+                  <option value="rw">Ranged Weapon</option>
+                  <option value="ms">Melee Spell</option>
+                  <option value="rs">Ranged Spell</option>
+                  <option value="save">Saving Throw</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div class="builder-row builder-attack-fields">
+                <label>To Hit: +<input type="number" class="builder-to-hit" value="0" min="-10" max="30"></label>
+                <label>Reach: <input type="number" class="builder-reach" value="5" min="0"> ft.</label>
+                <label>Range: <input type="text" class="builder-range" placeholder="80/320" style="width:70px"> ft.</label>
+              </div>
+              <div class="builder-row builder-save-fields" style="display:none;">
+                <label>DC: <input type="number" class="builder-dc" value="13" min="1" max="30"></label>
+                <select class="builder-save-ability">
+                  <option value="Strength">STR</option>
+                  <option value="Dexterity">DEX</option>
+                  <option value="Constitution">CON</option>
+                  <option value="Intelligence">INT</option>
+                  <option value="Wisdom">WIS</option>
+                  <option value="Charisma">CHA</option>
+                </select>
+                <label> saving throw</label>
+              </div>
+              <div class="builder-damage-list">
+                <div class="builder-row builder-damage-entry">
+                  <label>Damage: <input type="text" class="builder-damage-dice" placeholder="1d8+4" style="width:70px"></label>
+                  <select class="builder-damage-type">
+                    <option value="slashing">Slashing</option>
+                    <option value="piercing">Piercing</option>
+                    <option value="bludgeoning">Bludgeoning</option>
+                    <option value="fire">Fire</option>
+                    <option value="cold">Cold</option>
+                    <option value="lightning">Lightning</option>
+                    <option value="thunder">Thunder</option>
+                    <option value="acid">Acid</option>
+                    <option value="poison">Poison</option>
+                    <option value="necrotic">Necrotic</option>
+                    <option value="radiant">Radiant</option>
+                    <option value="force">Force</option>
+                    <option value="psychic">Psychic</option>
+                  </select>
+                  <button type="button" class="builder-add-damage" title="Add extra damage">+</button>
+                </div>
+              </div>
+              <div class="builder-row">
+                <input type="text" class="builder-extra" placeholder="Extra text (e.g. plus 3 (1d6) fire damage)">
+              </div>
+              <button type="button" class="builder-add-action"><i class="fa-solid fa-plus"></i> Add Action to List</button>
+            </div>
           </div>
           <div class="field-group">
             <label for="monster-reactions">Reactions:</label><br>
-            <textarea id="monster-reactions" placeholder="e.g., Opportunity Attack. The stalker makes..."></textarea>
+            <textarea id="monster-reactions" placeholder="Parry: The creature adds 2 to its AC against one melee attack."></textarea>
+            <button type="button" class="action-builder-toggle" data-target="monster-reactions">
+              <i class="fa-solid fa-plus-circle"></i> Action Builder
+            </button>
+            <div class="action-builder" id="action-builder-monster-reactions" style="display:none;">
+              <div class="builder-row">
+                <input type="text" class="builder-name" placeholder="Reaction name (e.g. Parry)">
+                <select class="builder-type">
+                  <option value="other" selected>Other</option>
+                  <option value="mw">Melee Weapon</option>
+                  <option value="rw">Ranged Weapon</option>
+                  <option value="ms">Melee Spell</option>
+                  <option value="rs">Ranged Spell</option>
+                  <option value="save">Saving Throw</option>
+                </select>
+              </div>
+              <div class="builder-row builder-attack-fields" style="display:none;">
+                <label>To Hit: +<input type="number" class="builder-to-hit" value="0" min="-10" max="30"></label>
+                <label>Reach: <input type="number" class="builder-reach" value="5" min="0"> ft.</label>
+                <label>Range: <input type="text" class="builder-range" placeholder="80/320" style="width:70px"> ft.</label>
+              </div>
+              <div class="builder-row builder-save-fields" style="display:none;">
+                <label>DC: <input type="number" class="builder-dc" value="13" min="1" max="30"></label>
+                <select class="builder-save-ability">
+                  <option value="Strength">STR</option>
+                  <option value="Dexterity">DEX</option>
+                  <option value="Constitution">CON</option>
+                  <option value="Intelligence">INT</option>
+                  <option value="Wisdom">WIS</option>
+                  <option value="Charisma">CHA</option>
+                </select>
+                <label> saving throw</label>
+              </div>
+              <div class="builder-damage-list">
+                <div class="builder-row builder-damage-entry">
+                  <label>Damage: <input type="text" class="builder-damage-dice" placeholder="1d8+4" style="width:70px"></label>
+                  <select class="builder-damage-type">
+                    <option value="slashing">Slashing</option>
+                    <option value="piercing">Piercing</option>
+                    <option value="bludgeoning">Bludgeoning</option>
+                    <option value="fire">Fire</option>
+                    <option value="cold">Cold</option>
+                    <option value="lightning">Lightning</option>
+                    <option value="thunder">Thunder</option>
+                    <option value="acid">Acid</option>
+                    <option value="poison">Poison</option>
+                    <option value="necrotic">Necrotic</option>
+                    <option value="radiant">Radiant</option>
+                    <option value="force">Force</option>
+                    <option value="psychic">Psychic</option>
+                  </select>
+                  <button type="button" class="builder-add-damage" title="Add extra damage">+</button>
+                </div>
+              </div>
+              <div class="builder-row">
+                <input type="text" class="builder-extra" placeholder="Extra text (e.g. The creature adds 2 to its AC)">
+              </div>
+              <button type="button" class="builder-add-action"><i class="fa-solid fa-plus"></i> Add Action to List</button>
+            </div>
           </div>
           <button id="add-monster-btn">Add Monster</button>
         </div>

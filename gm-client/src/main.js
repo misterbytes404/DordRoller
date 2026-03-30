@@ -3,6 +3,7 @@ import { DiceRoller } from './modules/diceRoller.js';
 import { MonsterTracker } from './modules/monsterTracker.js';
 import { PlayerTracker } from './modules/playerTracker.js';
 import { RollLog } from './modules/rollLog.js';
+import { OverlaySettings } from './modules/overlaySettings.js';
 
 // Dynamic base URL - works in both dev and production
 const BASE_URL = window.location.origin;
@@ -321,8 +322,9 @@ function leaveCurrentRoom() {
   currentRoom = null;
   currentRoomId = null;
   
-  // Clear monster tracker room ID
+  // Clear monster tracker and overlay settings room ID
   monsterTracker.setRoomId(null);
+  overlaySettings.setRoomId(null);
   
   // Reset UI
   document.getElementById('room-setup').style.display = 'block';
@@ -344,8 +346,9 @@ function showRoomInfo(code, roomId = null, roomName = null) {
   // Set room ID for persistence
   if (roomId) {
     currentRoomId = roomId;
-    // Set room ID for monster tracker persistence
+    // Set room ID for monster tracker and overlay settings persistence
     monsterTracker.setRoomId(roomId);
+    overlaySettings.setRoomId(roomId);
     console.log('Room ID set for persistence:', roomId);
   }
   
@@ -407,9 +410,10 @@ socket.on('room_joined', (data) => {
     showRoomInfo(data.roomCode, data.roomId, data.roomName);
   }
   
-  // Set room ID for monster tracker persistence
+  // Set room ID for monster tracker and overlay settings persistence
   if (currentRoomId) {
     monsterTracker.setRoomId(currentRoomId);
+    overlaySettings.setRoomId(currentRoomId);
   }
 });
 
@@ -419,6 +423,7 @@ socket.on('error', (data) => {
 
 // Initialize modules
 const diceRoller = new DiceRoller(socket, () => currentRoom);
-const monsterTracker = new MonsterTracker();
+const monsterTracker = new MonsterTracker(socket, () => currentRoom);
 const playerTracker = new PlayerTracker(socket);
-const rollLog = new RollLog(socket);
+const rollLog = new RollLog(socket, () => currentRoom);
+const overlaySettings = new OverlaySettings(socket, () => currentRoom, () => monsterTracker.monsters);

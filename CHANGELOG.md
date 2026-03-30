@@ -11,6 +11,79 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Action Builder** — Guided form to build properly formatted actions & reactions that generate roll buttons
+  - Available on both the Add Monster form and inline Edit form
+  - Attack type selector: Melee/Ranged Weapon, Melee/Ranged Spell, Saving Throw, or Other
+  - Contextual fields: to-hit bonus + reach/range for attacks, DC + ability for saves
+  - Multiple damage entries with dice expression and damage type
+  - Auto-calculates average damage from dice notation
+  - Generated text follows the standard D&D format the roll panel parser recognizes
+  - Editing or adding actions clears the cached attack data so roll buttons always regenerate
+
+- **Custom Monster Library** — GMs can save monsters to their account for reuse across rooms
+  - Save button (bookmark icon) on every monster card in the tracker
+  - Saved monsters appear in search results with a star icon and "(Custom)" tag
+  - Quick-add custom monsters to the current encounter with one click
+  - Delete custom monsters from the library directly in search results
+  - Account-scoped — monsters are private to the GM who created them
+  - Requires authentication (Twitch SSO)
+
+- **Roll Sound Effect** — Plays a dice roll sound on the OBS overlay when any roll is received
+  - Preloads `sounds/DieRoll.mp3` with silent fallback if file is missing
+  - Supports rapid-fire rolls (overlapping audio via cloned nodes)
+  - GM toggle: Enable/disable roll sound from Overlay Settings panel
+  - GM slider: Adjustable volume (0–100%) from Overlay Settings panel
+  - Settings persist to database and sync in real-time via WebSocket
+
+- **Save / Load Overlay Defaults** — GMs can save overlay settings as account-level defaults
+  - "Save as Default" button stores current settings (minus entity visibility) to the GM's account
+  - "Load Saved Settings" button applies saved defaults to the current room
+  - Enables quick overlay setup when creating new rooms
+  - Requires authentication (Twitch SSO)
+  - Settings persist to database and sync in real-time via WebSocket
+
+- **Health Bar Overlay** — Persona-inspired JRPG health bars on the OBS overlay (designed for **1920×1080**)
+  - Grouped display: Party and Enemies with separate configurable corner positions
+  - Group headers ("PARTY" / "ENEMIES") with configurable font, size, and color
+  - Smooth bar animations: sliding fill, ghost bar trail on damage, heal effects
+  - Death state: greyscale + dimmed bars for entities at 0 HP
+  - Max 10 bars per group (party and enemies tracked independently)
+  - Per-entity visibility toggles from GM panel
+  - Manual sync button to refresh overlay state from current monster cards and connected players
+
+- **Player Tag Display** — Shows the player's identity under their health bar on the OBS overlay
+  - Displays "Player: {TwitchName}" beneath each player's health bar
+  - Service icon before the tag (Twitch logo for Twitch users, generic user icon as fallback)
+  - Future-proofed icon mapping for Discord, Google, and YouTube auth providers
+  - Full typography controls: independent font family, font size (8–24px), and color
+  - Respects Show Names toggle — hides when names are hidden
+
+- **GM Overlay Settings Panel** — Full overlay customization from the GM toolbar
+  - Enable/disable overlay, name labels, and HP numbers
+  - Typography section: independent bar font/size, header font/size, and player tag font/size (6 font options each)
+  - Colors section: primary bar, low HP, ghost bar, header text, monster names, player names, player tag
+  - Layout section: visual position picker for party and enemy groups (4 corners)
+  - Visible Entities section: toggle individual monsters/players on the overlay
+  - Sync Overlay button: bulk-pushes current monster and player state to the backend
+  - All settings persist to database (JSONB) and sync in real-time via WebSocket
+
+- **Monster Roll Buttons** — Expandable roll panel on each monster card for quick dice rolls
+  - Toggle button reveals/hides roll panel with smooth animation
+  - **Initiative Roll** — d20 + Dex modifier with editable modifier input
+  - **Ability Checks** — Roll any of the 6 ability checks with auto-calculated modifiers
+  - **Saving Throws** — All 6 saves with proficiency highlighting (gold border for proficient saves)
+  - **Attack Rolls** — Auto-parsed from bestiary actions (e.g., "Scimitar +4 to hit")
+  - **Damage Rolls** — Parsed damage dice from action text (e.g., "1d6 + 2 slashing")
+  - All modifiers are editable in the card before rolling
+  - Rolls broadcast to room (OBS overlay + connected clients)
+  - Responsive layout scales properly with 3+ monsters per row
+
+- **Duplicate Monster Button** — Create copies of existing monster cards
+  - Click duplicate icon to clone any monster
+  - Automatically appends "#2", "#3", etc. to copied monster names
+  - Duplicates start at full HP
+  - Useful for quickly adding multiple of the same creature (e.g., 4 goblins)
+
 - **Dev Branch & Branch Protection** — Set up development workflow for experimental features
   - Created `dev` branch for testing experimental features (e.g., custom assets)
   - Configured GitHub branch protection rules on `main`:
@@ -18,6 +91,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Restrict updates to repository admin only
     - Block force pushes and deletions
   - Production (Railway) remains isolated — only deploys from `main`
+
+### Fixed
+
+- **Monster Card Edit Button** — Edit mode now properly activates when clicking Edit button
+  - Fixed ID type mismatch (hex string IDs no longer incorrectly converted to numbers)
+  - Fixed event listener targeting when clicking button icons
+- **Roll Panel Responsive Layout** — Roll panels now scale properly in narrow cards
+  - Reduced padding and font sizes for compact display
+  - Grid columns auto-fit based on available width
+  - Attack rows wrap correctly on smaller cards
 
 ---
 
