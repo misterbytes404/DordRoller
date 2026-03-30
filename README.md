@@ -319,16 +319,17 @@ Both endpoints return a JWT token identical to Twitch OAuth tokens.
 | **MVP 3** | ✅ Complete | Player Client Integration |
 | **MVP 4** | ✅ Complete | Database & Authentication |
 | **v1.0.0** | ✅ Deployed | Production deployment on Railway |
+| **v1.2.0** | ✅ Released | Action Builder, Custom Monster Library, OBS overlay enhancements, security patches |
 
 ### 📋 To Do
 
 - [ ] Local account authentication (username/password)
-- [ ] OBS Monster Display (show monster name & HP on stream)
 - [ ] UI polish across all clients
 - [ ] Room dashboard after login
 
 ### ✅ Completed
 
+- [x] **v1.2.0** — Action Builder, Custom Monster Library, OBS overlay enhancements, dependency security patch (Mar 30, 2026)
 - [x] **v1.0.0 Production Deployment** on Railway (Dec 12, 2025)
 - [x] Privacy: Removed email collection from Twitch OAuth
 - [x] Dynamic URL handling for production/development
@@ -338,6 +339,9 @@ Both endpoints return a JWT token identical to Twitch OAuth tokens.
 - [x] Monster tracker with HP bars
 - [x] Action Builder for monster actions & reactions
 - [x] Custom Monster Library (account-scoped)
+- [x] OBS health bar overlay with GM controls
+- [x] Roll sound effects with volume control
+- [x] Save/Load overlay defaults
 - [x] Player character sheet (D&D 5e)
 - [x] Quick roll buttons & combat dice system
 - [x] GM Roll Log widget

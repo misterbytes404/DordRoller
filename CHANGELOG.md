@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [1.2.0] - 2026-03-30
+
 ### Added
 
 - **Action Builder** — Guided form to build properly formatted actions & reactions that generate roll buttons
@@ -101,6 +105,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Reduced padding and font sizes for compact display
   - Grid columns auto-fit based on available width
   - Attack rows wrap correctly on smaller cards
+
+### Security
+
+- **Dependency Security Patch** — Updated backend dependencies to resolve 7 HIGH-severity vulnerabilities
+  - `socket.io` 4.8.1 → 4.8.3 (fixes `socket.io-parser` resource exhaustion — CVE-2026-33151)
+  - `express` transitive deps updated (fixes `qs` resource exhaustion — CVE-2025-15284, CVE-2026-2391)
+  - `path-to-regexp` ReDoS fix (CVE-2026-4867)
+  - `brace-expansion` infinite loop fix (CVE-2026-33750)
+  - `minimatch` ReDoS + algorithmic complexity fixes (CVE-2026-26996, CVE-2026-27903)
+  - Additional updates: `cors` 2.8.5→2.8.6, `dotenv` 17.2.3→17.3.1, `pg` 8.16.3→8.20.0, `validator` 13.15.23→13.15.26, `nodemon` 3.1.11→3.1.14
 
 ---
 
